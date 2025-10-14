@@ -54,7 +54,7 @@ export default function AdminBookings() {
     const statusConfig = {
       pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã được đặt' },
       active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đang sử dụng' },
-      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Hoàn thành' },
+      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã kết thúc' },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Đã hủy' }
     }
 
