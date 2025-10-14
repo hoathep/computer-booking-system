@@ -4,6 +4,38 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Cleanup expired bookings
+router.post('/cleanup', authenticateToken, (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    
+    // Update expired bookings to completed
+    const result = db.prepare(`
+      UPDATE bookings 
+      SET status = 'completed'
+      WHERE status IN ('pending', 'active')
+      AND end_time <= ?
+    `).run(now);
+
+    // Update related sessions to locked
+    db.prepare(`
+      UPDATE sessions 
+      SET status = 'locked', locked_at = ?
+      WHERE booking_id IN (
+        SELECT id FROM bookings 
+        WHERE status = 'completed' AND end_time <= ?
+      )
+    `).run(now, now);
+
+    res.json({
+      message: 'Cleanup completed successfully',
+      updatedBookings: result.changes
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all bookings with optional date filter (for calendar view)
 router.get('/', authenticateToken, (req, res) => {
   try {

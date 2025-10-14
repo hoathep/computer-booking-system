@@ -15,6 +15,13 @@ export default function MyBookings() {
 
   const fetchBookings = async () => {
     try {
+      // First cleanup expired bookings
+      try {
+        await axios.post('/api/bookings/cleanup')
+      } catch (cleanupError) {
+        console.warn('Cleanup failed:', cleanupError)
+      }
+      
       const response = await axios.get('/api/bookings/my-bookings')
       setBookings(response.data)
     } catch (error) {
@@ -38,8 +45,8 @@ export default function MyBookings() {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Chờ xử lý', icon: Clock },
-      active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đang hoạt động', icon: CheckCircle },
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã được đặt', icon: Clock },
+      active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đang sử dụng', icon: CheckCircle },
       completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã hoàn thành', icon: CheckCircle },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Đã hủy', icon: XCircle }
     }

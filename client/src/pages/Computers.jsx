@@ -27,6 +27,13 @@ export default function Computers() {
 
   const fetchComputers = async () => {
     try {
+      // First cleanup expired bookings
+      try {
+        await axios.post('/api/bookings/cleanup')
+      } catch (cleanupError) {
+        console.warn('Cleanup failed:', cleanupError)
+      }
+      
       const response = await axios.get('/api/computers')
       setComputers(response.data)
     } catch (error) {
@@ -67,11 +74,39 @@ export default function Computers() {
   const isTimeSlotBooked = (computer, timeSlot) => {
     return bookings.some(booking => 
       booking.computer_id === computer.id &&
+      booking.status !== 'cancelled' &&
+      booking.status !== 'completed' &&
       isWithinInterval(timeSlot, {
         start: new Date(booking.start_time),
         end: new Date(booking.end_time)
       })
     )
+  }
+
+  const getTimeSlotStatus = (computer, timeSlot) => {
+    const booking = bookings.find(booking => 
+      booking.computer_id === computer.id &&
+      booking.status !== 'cancelled' &&
+      booking.status !== 'completed' &&
+      isWithinInterval(timeSlot, {
+        start: new Date(booking.start_time),
+        end: new Date(booking.end_time)
+      })
+    )
+    
+    if (!booking) return 'available'
+    
+    const now = new Date()
+    const startTime = new Date(booking.start_time)
+    const endTime = new Date(booking.end_time)
+    
+    if (now >= startTime && now <= endTime) {
+      return booking.status === 'active' ? 'inUse' : 'booked'
+    } else if (now < startTime) {
+      return 'booked'
+    } else {
+      return 'available'
+    }
   }
 
   const isTimeSlotSelected = (timeSlot) => {
@@ -243,10 +278,12 @@ export default function Computers() {
                 >
                   <div className="flex items-center space-x-2">
                     <div className={`p-1.5 rounded-lg ${
-                      computer.is_currently_booked ? 'bg-red-100' : 'bg-green-100'
+                      computer.is_currently_in_use ? 'bg-red-100' : 
+                      computer.is_booked_future ? 'bg-yellow-100' : 'bg-green-100'
                     }`}>
                       <Monitor className={`h-4 w-4 ${
-                        computer.is_currently_booked ? 'text-red-600' : 'text-green-600'
+                        computer.is_currently_in_use ? 'text-red-600' : 
+                        computer.is_booked_future ? 'text-yellow-600' : 'text-green-600'
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -259,11 +296,18 @@ export default function Computers() {
                       )}
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      computer.is_currently_booked
+                      computer.is_currently_in_use
                         ? 'bg-red-100 text-red-700'
+                        : computer.is_booked_future
+                        ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-green-100 text-green-700'
                     }`}>
-                      {computer.is_currently_booked ? t('computers.inUse') : t('computers.available')}
+                      {computer.is_currently_in_use 
+                        ? t('computers.inUse') 
+                        : computer.is_booked_future 
+                        ? t('computers.booked') 
+                        : t('computers.available')
+                      }
                     </span>
                   </div>
                 </div>
@@ -293,9 +337,10 @@ export default function Computers() {
                   {/* Time Grid */}
                   <div className="time-grid">
                     {timeSlots.map((timeSlot) => {
-                      const isBooked = isTimeSlotBooked(selectedComputer, timeSlot)
+                      const timeSlotStatus = getTimeSlotStatus(selectedComputer, timeSlot)
                       const isSelected = isTimeSlotSelected(timeSlot)
                       const isCurrentHour = isSameHour(timeSlot, new Date())
+                      const isBooked = timeSlotStatus !== 'available'
                       
                       return (
                         <button
@@ -305,8 +350,10 @@ export default function Computers() {
                           onMouseEnter={() => handleTimeSlotMouseEnter(timeSlot)}
                           disabled={isBooked}
                           className={`h-8 rounded text-xs font-medium transition-all duration-200 ${
-                            isBooked
+                            timeSlotStatus === 'inUse'
                               ? 'bg-red-200 text-red-600 cursor-not-allowed opacity-60'
+                              : timeSlotStatus === 'booked'
+                              ? 'bg-yellow-200 text-yellow-600 cursor-not-allowed opacity-60'
                               : isSelected
                               ? 'bg-primary-500 text-white shadow-md'
                               : isCurrentHour
@@ -314,7 +361,9 @@ export default function Computers() {
                               : 'bg-green-100 text-green-700 hover:bg-green-200'
                           }`}
                         >
-                          {isBooked ? '❌' : isSelected ? '✓' : ''}
+                          {timeSlotStatus === 'inUse' ? '🔴' : 
+                           timeSlotStatus === 'booked' ? '🟡' : 
+                           isSelected ? '✓' : ''}
                         </button>
                       )
                     })}

@@ -7,9 +7,32 @@ const router = express.Router();
 // Get all computers with availability status
 router.get('/', authenticateToken, (req, res) => {
   try {
+    // First, clean up expired bookings
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE bookings 
+      SET status = 'completed'
+      WHERE status IN ('pending', 'active')
+      AND end_time <= ?
+    `).run(now);
+
     const computers = db.prepare(`
       SELECT 
         c.*,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status = 'active'
+          AND datetime('now') BETWEEN b.start_time AND b.end_time
+        ) as is_currently_in_use,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status = 'pending'
+          AND datetime('now') < b.start_time
+        ) as is_booked_future,
         (
           SELECT COUNT(*) 
           FROM bookings b 
