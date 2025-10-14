@@ -52,9 +52,9 @@ export default function AdminBookings() {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã được đặt' },
-      active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đang sử dụng' },
-      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã kết thúc' },
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Chờ' },
+      active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
+      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Hoàn thành' },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Đã hủy' }
     }
 

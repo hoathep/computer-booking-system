@@ -7,15 +7,8 @@ const router = express.Router();
 // Get all computers with availability status
 router.get('/', authenticateToken, (req, res) => {
   try {
-    // First, clean up expired bookings
     const now = new Date().toISOString();
-    db.prepare(`
-      UPDATE bookings 
-      SET status = 'completed'
-      WHERE status IN ('pending', 'active')
-      AND end_time <= ?
-    `).run(now);
-
+    
     const computers = db.prepare(`
       SELECT 
         c.*,
@@ -44,7 +37,14 @@ router.get('/', authenticateToken, (req, res) => {
       ORDER BY c.name
     `).all();
 
-    res.json(computers);
+    // Add computed status for easier frontend handling
+    const computersWithStatus = computers.map(computer => ({
+      ...computer,
+      status: computer.is_currently_in_use > 0 ? 'in_use' : 
+              computer.is_booked_future > 0 ? 'booked' : 'available'
+    }));
+
+    res.json(computersWithStatus);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -92,6 +92,46 @@ router.get('/:id/bookings', authenticateToken, (req, res) => {
     
     const bookings = db.prepare(query).all(...params);
     res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Auto cleanup expired bookings and update status
+router.post('/cleanup-expired', authenticateToken, (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    
+    // Update pending bookings to active if start time has passed
+    const activatedBookings = db.prepare(`
+      UPDATE bookings 
+      SET status = 'active'
+      WHERE status = 'pending'
+      AND start_time <= ? AND end_time > ?
+    `).run(now, now);
+
+    // Update expired active bookings to completed
+    const expiredActive = db.prepare(`
+      UPDATE bookings 
+      SET status = 'completed'
+      WHERE status = 'active'
+      AND end_time <= ?
+    `).run(now);
+
+    // Update expired pending bookings to cancelled (if start time passed but end time also passed)
+    const expiredPending = db.prepare(`
+      UPDATE bookings 
+      SET status = 'cancelled'
+      WHERE status = 'pending'
+      AND start_time < ? AND end_time <= ?
+    `).run(now, now);
+
+    res.json({
+      message: 'Status update completed successfully',
+      activatedBookings: activatedBookings.changes,
+      expiredActive: expiredActive.changes,
+      expiredPending: expiredPending.changes
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -39,9 +39,10 @@ router.post('/check-unlock', (req, res) => {
       });
     }
 
-    // Update booking status to active if it's pending
-    if (booking.status === 'pending') {
+    // Update booking status to active if it's pending and time has started
+    if (booking.status === 'pending' && currentTime >= startTime) {
       db.prepare(`UPDATE bookings SET status = 'active' WHERE id = ?`).run(booking.id);
+      booking.status = 'active'; // Update local object for response
     }
 
     // Check if session should be unlocked

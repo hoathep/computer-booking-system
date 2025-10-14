@@ -11,17 +11,17 @@ export default function MyBookings() {
 
   useEffect(() => {
     fetchBookings()
+    
+    // Auto refresh every 30 seconds to update status
+    const interval = setInterval(() => {
+      fetchBookings()
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const fetchBookings = async () => {
     try {
-      // First cleanup expired bookings
-      try {
-        await axios.post('/api/bookings/cleanup')
-      } catch (cleanupError) {
-        console.warn('Cleanup failed:', cleanupError)
-      }
-      
       const response = await axios.get('/api/bookings/my-bookings')
       setBookings(response.data)
     } catch (error) {
@@ -43,15 +43,27 @@ export default function MyBookings() {
     }
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, startTime, endTime) => {
+    const now = new Date()
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    
+    // Determine actual status based on time
+    let actualStatus = status
+    if (status === 'pending' && now >= start && now <= end) {
+      actualStatus = 'active'
+    } else if (status === 'active' && now > end) {
+      actualStatus = 'completed'
+    }
+    
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã được đặt', icon: Clock },
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã đặt', icon: Clock },
       active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đang sử dụng', icon: CheckCircle },
-      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã kết thúc', icon: CheckCircle },
+      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã hoàn thành', icon: CheckCircle },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Đã hủy', icon: XCircle }
     }
 
-    const config = statusConfig[status] || statusConfig.pending
+    const config = statusConfig[actualStatus] || statusConfig.pending
     const Icon = config.icon
 
     return (
@@ -111,7 +123,7 @@ export default function MyBookings() {
                   <div className="ml-4 flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-lg font-bold text-gray-900">{booking.computer_name}</h3>
-                      {getStatusBadge(booking.status)}
+                      {getStatusBadge(booking.status, booking.start_time, booking.end_time)}
                     </div>
                     
                     <p className="text-sm text-gray-600 mb-3">{booking.description}</p>
