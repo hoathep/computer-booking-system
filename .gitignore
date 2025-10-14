@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+*.db
+*.sqlite
+.DS_Store
+npm-debug.log*
+client/node_modules/
+client/dist/
+client-app/node_modules/
+client-app/dist/
+
+
