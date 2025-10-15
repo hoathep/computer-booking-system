@@ -7,6 +7,7 @@ import bookingRoutes from './routes/bookings.js';
 import adminRoutes from './routes/admin.js';
 import clientRoutes from './routes/client.js';
 import { initDatabase } from './database/init.js';
+import schedule from 'node-schedule';
 
 dotenv.config();
 
@@ -35,6 +36,45 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`🌐 API endpoint: http://localhost:${PORT}/api`);
+});
+
+// --- No-show auto-cancel job ---
+// Every minute: cancel bookings that started >15 minutes ago but never unlocked
+import db from './database/init.js';
+schedule.scheduleJob('* * * * *', () => {
+  try {
+    const nowIso = new Date().toISOString();
+    // For each pending booking that has started, check group-specific no_show_minutes
+    const candidates = db.prepare(`
+      SELECT b.id, b.user_id, b.start_time, gl.no_show_minutes
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      LEFT JOIN group_limits gl ON gl.group_name = u.group_name
+      WHERE b.status = 'pending'
+      AND b.start_time <= ?
+    `).all(nowIso);
+
+    const staleIds = [];
+    for (const c of candidates) {
+      const minutes = (c.no_show_minutes ?? 15);
+      const cutoff = new Date(new Date(c.start_time).getTime() + minutes * 60 * 1000);
+      if (new Date(nowIso) >= cutoff) {
+        // still pending and not unlocked?
+        const sess = db.prepare('SELECT unlocked_at FROM sessions WHERE booking_id = ?').get(c.id);
+        if (!sess || !sess.unlocked_at) {
+          staleIds.push(c.id);
+        }
+      }
+    }
+    if (staleIds.length > 0) {
+      const placeholders = staleIds.map(() => '?').join(',');
+      db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id IN (${placeholders})`).run(...staleIds);
+      db.prepare(`UPDATE sessions SET status = 'locked', locked_at = ? WHERE booking_id IN (${placeholders})`).run(nowIso, ...staleIds);
+      console.log(`⏰ Auto-cancelled no-show bookings: ${staleIds.join(', ')}`);
+    }
+  } catch (err) {
+    console.error('No-show job error:', err.message);
+  }
 });
 
 

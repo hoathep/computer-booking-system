@@ -1,6 +1,6 @@
 import { Outlet, NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages } from 'lucide-react'
+import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages, BarChart } from 'lucide-react'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useTranslation } from '../hooks/useTranslation'
 
@@ -13,6 +13,7 @@ export default function AdminLayout() {
     { to: '/admin/users', icon: Users, label: t('admin.users') },
     { to: '/admin/computers', icon: Monitor, label: t('admin.computers') },
     { to: '/admin/bookings', icon: Calendar, label: t('admin.bookings') },
+    { to: '/admin/reports', icon: BarChart, label: 'Reports' },
     { to: '/admin/groups', icon: Users2, label: t('admin.groups') },
     { to: '/admin/translations', icon: Languages, label: t('admin.translations') },
   ]

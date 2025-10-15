@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Users, Plus, Edit2, Trash2, Save, X } from 'lucide-react'
+import { Users, Plus, Edit2, Trash2, Save, X, ShieldAlert, ShieldCheck } from 'lucide-react'
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([])
@@ -15,7 +15,8 @@ export default function AdminUsers() {
     email: '',
     role: 'user',
     group_name: 'default',
-    max_concurrent_bookings: 1
+    max_concurrent_bookings: 1,
+    banned: 0
   })
   const [message, setMessage] = useState(null)
 
@@ -48,7 +49,8 @@ export default function AdminUsers() {
         email: user.email || '',
         role: user.role,
         group_name: user.group_name,
-        max_concurrent_bookings: user.max_concurrent_bookings || 0
+        max_concurrent_bookings: user.max_concurrent_bookings || 0,
+        banned: user.banned || 0
       })
     } else {
       setEditingUser(null)
@@ -59,7 +61,8 @@ export default function AdminUsers() {
         email: '',
         role: 'user',
         group_name: 'default',
-        max_concurrent_bookings: 1
+        max_concurrent_bookings: 1,
+        banned: 0
       })
     }
     setShowModal(true)
@@ -93,6 +96,21 @@ export default function AdminUsers() {
       fetchData()
     } catch (error) {
       setMessage({ type: 'error', text: error.response?.data?.error || 'Xóa user thất bại!' })
+    }
+  }
+
+  const handleBanToggle = async (user) => {
+    try {
+      if (user.banned) {
+        await axios.post(`/api/admin/users/${user.id}/unban`)
+        setMessage({ type: 'success', text: `Đã gỡ ban '${user.username}'` })
+      } else {
+        await axios.post(`/api/admin/users/${user.id}/ban`)
+        setMessage({ type: 'success', text: `Đã ban '${user.username}'` })
+      }
+      fetchData()
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Thao tác thất bại!' })
     }
   }
 
@@ -138,12 +156,13 @@ export default function AdminUsers() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nhóm</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giới hạn</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className={`hover:bg-gray-50 ${user.banned ? 'opacity-70' : ''}`}>
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{user.username}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.fullname}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">{user.email || '-'}</td>
@@ -158,6 +177,17 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.group_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.max_concurrent_bookings || 'Theo nhóm'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {user.banned ? (
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700 inline-flex items-center">
+                        <ShieldAlert className="h-3.5 w-3.5 mr-1" /> Banned
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 inline-flex items-center">
+                        <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Active
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button
                       onClick={() => handleOpenModal(user)}
@@ -166,12 +196,21 @@ export default function AdminUsers() {
                       <Edit2 className="h-4 w-4" />
                     </button>
                     {user.role !== 'admin' && (
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleBanToggle(user)}
+                          className={`mr-3 ${user.banned ? 'text-green-600 hover:text-green-700' : 'text-yellow-600 hover:text-yellow-700'}`}
+                          title={user.banned ? 'Unban' : 'Ban'}
+                        >
+                          {user.banned ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -273,6 +312,20 @@ export default function AdminUsers() {
                   className="input"
                 />
               </div>
+
+              {editingUser && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <select
+                    value={formData.banned}
+                    onChange={(e) => setFormData({ ...formData, banned: parseInt(e.target.value) })}
+                    className="input"
+                  >
+                    <option value={0}>Active</option>
+                    <option value={1}>Banned</option>
+                  </select>
+                </div>
+              )}
 
               <div className="flex space-x-3">
                 <button

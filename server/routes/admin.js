@@ -14,7 +14,7 @@ router.use(authenticateToken, isAdmin);
 router.get('/users', (req, res) => {
   try {
     const users = db.prepare(`
-      SELECT id, username, fullname, email, role, group_name, max_concurrent_bookings, created_at
+      SELECT id, username, fullname, email, role, group_name, max_concurrent_bookings, banned, created_at
       FROM users
       ORDER BY created_at DESC
     `).all();
@@ -57,7 +57,7 @@ router.post('/users', (req, res) => {
 // Update user
 router.put('/users/:id', (req, res) => {
   try {
-    const { fullname, email, role, group_name, max_concurrent_bookings } = req.body;
+    const { fullname, email, role, group_name, max_concurrent_bookings, banned } = req.body;
     
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!user) {
@@ -66,11 +66,44 @@ router.put('/users/:id', (req, res) => {
 
     db.prepare(`
       UPDATE users 
-      SET fullname = ?, email = ?, role = ?, group_name = ?, max_concurrent_bookings = ?
+      SET fullname = ?, email = ?, role = ?, group_name = ?, max_concurrent_bookings = ?, banned = COALESCE(?, banned)
       WHERE id = ?
-    `).run(fullname || user.fullname, email || user.email, role || user.role, group_name || user.group_name, max_concurrent_bookings !== undefined ? max_concurrent_bookings : user.max_concurrent_bookings, req.params.id);
+    `).run(
+      fullname || user.fullname,
+      email || user.email,
+      role || user.role,
+      group_name || user.group_name,
+      max_concurrent_bookings !== undefined ? max_concurrent_bookings : user.max_concurrent_bookings,
+      banned,
+      req.params.id
+    );
 
     res.json({ message: 'User updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Ban user
+router.post('/users/:id/ban', (req, res) => {
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'admin') return res.status(403).json({ error: 'Cannot ban admin user' });
+    db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(req.params.id);
+    res.json({ message: 'User banned' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unban user
+router.post('/users/:id/unban', (req, res) => {
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(req.params.id);
+    res.json({ message: 'User unbanned' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -100,7 +133,7 @@ router.delete('/users/:id', (req, res) => {
 // Get all computers
 router.get('/computers', (req, res) => {
   try {
-    const computers = db.prepare('SELECT * FROM computers ORDER BY name').all();
+  const computers = db.prepare('SELECT * FROM computers ORDER BY name').all();
     res.json(computers);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -110,16 +143,20 @@ router.get('/computers', (req, res) => {
 // Create computer
 router.post('/computers', (req, res) => {
   try {
-    const { name, description, location, ip_address, mac_address } = req.body;
+    const { name, description, location, ip_address, mac_address, preferred_group, memory_gb, recommended_software } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Computer name required' });
     }
 
+    const normalizedPref = Array.isArray(preferred_group)
+      ? preferred_group.join(',')
+      : (preferred_group || null);
+    console.log('ADMIN create computer body:', req.body);
     const result = db.prepare(`
-      INSERT INTO computers (name, description, location, ip_address, mac_address)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(name, description || null, location || null, ip_address || null, mac_address || null);
+      INSERT INTO computers (name, description, location, ip_address, mac_address, preferred_group, memory_gb, recommended_software)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, description || null, location || null, ip_address || null, mac_address || null, normalizedPref, memory_gb ?? null, recommended_software ?? null);
 
     res.status(201).json({ 
       message: 'Computer created successfully',
@@ -133,16 +170,20 @@ router.post('/computers', (req, res) => {
 // Update computer
 router.put('/computers/:id', (req, res) => {
   try {
-    const { name, description, location, status, ip_address, mac_address } = req.body;
+    const { name, description, location, status, ip_address, mac_address, preferred_group, memory_gb, recommended_software } = req.body;
     
     const computer = db.prepare('SELECT * FROM computers WHERE id = ?').get(req.params.id);
     if (!computer) {
       return res.status(404).json({ error: 'Computer not found' });
     }
 
+    const normalizedPrefUpd = Array.isArray(preferred_group)
+      ? preferred_group.join(',')
+      : preferred_group;
+    console.log('ADMIN update computer body:', req.body);
     db.prepare(`
       UPDATE computers 
-      SET name = ?, description = ?, location = ?, status = ?, ip_address = ?, mac_address = ?
+      SET name = ?, description = ?, location = ?, status = ?, ip_address = ?, mac_address = ?, preferred_group = ?, memory_gb = ?, recommended_software = ?
       WHERE id = ?
     `).run(
       name || computer.name, 
@@ -151,6 +192,9 @@ router.put('/computers/:id', (req, res) => {
       status || computer.status,
       ip_address !== undefined ? ip_address : computer.ip_address,
       mac_address !== undefined ? mac_address : computer.mac_address,
+      normalizedPrefUpd !== undefined ? normalizedPrefUpd : computer.preferred_group,
+      memory_gb !== undefined ? memory_gb : computer.memory_gb,
+      recommended_software !== undefined ? recommended_software : computer.recommended_software,
       req.params.id
     );
 
@@ -190,7 +234,7 @@ router.get('/groups', (req, res) => {
 // Create/Update group
 router.post('/groups', (req, res) => {
   try {
-    const { group_name, max_concurrent_bookings } = req.body;
+    const { group_name, max_concurrent_bookings, no_show_minutes } = req.body;
 
     if (!group_name || max_concurrent_bookings === undefined) {
       return res.status(400).json({ error: 'Group name and max concurrent bookings required' });
@@ -201,15 +245,15 @@ router.post('/groups', (req, res) => {
     if (existing) {
       db.prepare(`
         UPDATE group_limits 
-        SET max_concurrent_bookings = ?
+        SET max_concurrent_bookings = ?, no_show_minutes = COALESCE(?, no_show_minutes)
         WHERE group_name = ?
-      `).run(max_concurrent_bookings, group_name);
+      `).run(max_concurrent_bookings, no_show_minutes, group_name);
       res.json({ message: 'Group updated successfully' });
     } else {
       db.prepare(`
-        INSERT INTO group_limits (group_name, max_concurrent_bookings)
-        VALUES (?, ?)
-      `).run(group_name, max_concurrent_bookings);
+        INSERT INTO group_limits (group_name, max_concurrent_bookings, no_show_minutes)
+        VALUES (?, ?, COALESCE(?, 15))
+      `).run(group_name, max_concurrent_bookings, no_show_minutes);
       res.status(201).json({ message: 'Group created successfully' });
     }
   } catch (error) {
@@ -289,6 +333,113 @@ router.get('/stats', (req, res) => {
     });
   } catch (error) {
     console.error('Stats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- REPORTS ---
+// Usage report: total booked hours, used hours, and no-show hours per user
+router.get('/reports/usage', (req, res) => {
+  try {
+    const { from, to } = req.query;
+
+    // Build time filter
+    let timeFilter = '';
+    const params = [];
+    if (from) {
+      timeFilter += ' AND b.start_time >= ?';
+      params.push(from);
+    }
+    if (to) {
+      timeFilter += ' AND b.end_time <= ?';
+      params.push(to);
+    }
+
+    // Fetch bookings with sessions and user info in the window
+    const rows = db.prepare(`
+      SELECT 
+        b.id as booking_id,
+        b.user_id,
+        b.start_time,
+        b.end_time,
+        b.status,
+        u.username,
+        u.fullname,
+        s.unlocked_at,
+        s.locked_at,
+        s.status as session_status
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      LEFT JOIN sessions s ON s.booking_id = b.id
+      WHERE 1=1 ${timeFilter}
+      ORDER BY b.start_time DESC
+    `).all(...params);
+
+    const now = new Date();
+    const perUser = new Map();
+
+    for (const r of rows) {
+      const start = new Date(r.start_time);
+      const end = new Date(r.end_time);
+      const bookedMs = Math.max(0, end - start);
+
+      // Compute used duration based on unlocked_at and locked_at within booking window
+      let usedMs = 0;
+      if (r.unlocked_at) {
+        const unlockedAt = new Date(r.unlocked_at);
+        const lockedAt = r.locked_at ? new Date(r.locked_at) : now;
+        const sessionStart = unlockedAt < start ? start : unlockedAt;
+        const sessionEnd = lockedAt > end ? end : lockedAt;
+        usedMs = Math.max(0, sessionEnd - sessionStart);
+      }
+
+      const noShowMs = Math.max(0, bookedMs - usedMs);
+
+      const key = r.user_id;
+      if (!perUser.has(key)) {
+        perUser.set(key, {
+          userId: r.user_id,
+          username: r.username,
+          fullname: r.fullname,
+          bookings: 0,
+          bookedMs: 0,
+          usedMs: 0,
+          noShowMs: 0
+        });
+      }
+      const agg = perUser.get(key);
+      agg.bookings += 1;
+      agg.bookedMs += bookedMs;
+      agg.usedMs += usedMs;
+      agg.noShowMs += noShowMs;
+    }
+
+    function msToHours(ms) { return +(ms / (1000 * 60 * 60)).toFixed(2); }
+
+    const users = Array.from(perUser.values()).map(u => ({
+      userId: u.userId,
+      username: u.username,
+      fullname: u.fullname,
+      bookings: u.bookings,
+      bookedHours: msToHours(u.bookedMs),
+      usedHours: msToHours(u.usedMs),
+      noShowHours: msToHours(u.noShowMs)
+    }));
+
+    const totals = users.reduce((acc, u) => {
+      acc.bookings += u.bookings;
+      acc.bookedHours = +(acc.bookedHours + u.bookedHours).toFixed(2);
+      acc.usedHours = +(acc.usedHours + u.usedHours).toFixed(2);
+      acc.noShowHours = +(acc.noShowHours + u.noShowHours).toFixed(2);
+      return acc;
+    }, { bookings: 0, bookedHours: 0, usedHours: 0, noShowHours: 0 });
+
+    res.json({
+      range: { from: from || null, to: to || null },
+      totals,
+      users
+    });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

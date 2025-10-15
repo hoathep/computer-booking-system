@@ -6,6 +6,8 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+
 // Login
 router.post('/login', (req, res) => {
   try {
@@ -21,6 +23,10 @@ router.post('/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    if (user.banned) {
+      return res.status(403).json({ error: 'Account is banned' });
+    }
+
     const token = jwt.sign(
       { 
         id: user.id, 
@@ -30,7 +36,7 @@ router.post('/login', (req, res) => {
         group_name: user.group_name,
         max_concurrent_bookings: user.max_concurrent_bookings
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '24h' }
     );
 
@@ -46,6 +52,7 @@ router.post('/login', (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Auth /login error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -76,6 +83,7 @@ router.post('/register', (req, res) => {
       userId: result.lastInsertRowid
     });
   } catch (error) {
+    console.error('Auth /register error:', error);
     res.status(500).json({ error: error.message });
   }
 });

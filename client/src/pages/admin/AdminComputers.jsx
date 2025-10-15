@@ -4,6 +4,7 @@ import { Monitor, Plus, Edit2, Trash2, Save, X } from 'lucide-react'
 
 export default function AdminComputers() {
   const [computers, setComputers] = useState([])
+  const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingComputer, setEditingComputer] = useState(null)
@@ -13,12 +14,16 @@ export default function AdminComputers() {
     location: '',
     status: 'available',
     ip_address: '',
-    mac_address: ''
+    mac_address: '',
+    preferred_group: [],
+    memory_gb: '',
+    recommended_software: ''
   })
   const [message, setMessage] = useState(null)
 
   useEffect(() => {
     fetchComputers()
+    fetchGroups()
   }, [])
 
   const fetchComputers = async () => {
@@ -32,6 +37,15 @@ export default function AdminComputers() {
     }
   }
 
+  const fetchGroups = async () => {
+    try {
+      const response = await axios.get('/api/admin/groups')
+      setGroups(response.data)
+    } catch (error) {
+      console.error('Failed to fetch groups:', error)
+    }
+  }
+
   const handleOpenModal = (computer = null) => {
     if (computer) {
       setEditingComputer(computer)
@@ -41,7 +55,13 @@ export default function AdminComputers() {
         location: computer.location || '',
         status: computer.status,
         ip_address: computer.ip_address || '',
-        mac_address: computer.mac_address || ''
+        mac_address: computer.mac_address || '',
+        preferred_group: Array.isArray(computer.preferred_group)
+          ? computer.preferred_group
+          : (computer.preferred_group ? String(computer.preferred_group).split(',').map(s => s.trim()).filter(Boolean) : [])
+        ,
+        memory_gb: computer.memory_gb ?? '',
+        recommended_software: computer.recommended_software || ''
       })
     } else {
       setEditingComputer(null)
@@ -51,7 +71,10 @@ export default function AdminComputers() {
         location: '',
         status: 'available',
         ip_address: '',
-        mac_address: ''
+        mac_address: '',
+        preferred_group: [],
+        memory_gb: '',
+        recommended_software: ''
       })
     }
     setShowModal(true)
@@ -148,7 +171,9 @@ export default function AdminComputers() {
               <p><strong>Mô tả:</strong> {computer.description || '-'}</p>
               <p><strong>Vị trí:</strong> {computer.location || '-'}</p>
               <p><strong>IP:</strong> {computer.ip_address || '-'}</p>
-              <p><strong>MAC:</strong> {computer.mac_address || '-'}</p>
+              <p><strong>Nhóm ưu tiên:</strong> {computer.preferred_group || '-'}</p>
+              <p><strong>Bộ nhớ (GB):</strong> {computer.memory_gb ?? '-'}</p>
+              <p><strong>Chạy Phân Tích:</strong> {computer.recommended_software || '-'}</p>
             </div>
 
             <div className="flex space-x-2 pt-4 border-t">
@@ -236,13 +261,43 @@ export default function AdminComputers() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">MAC Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nhóm ưu tiên sử dụng</label>
+                <select
+                  multiple
+                  value={formData.preferred_group}
+                  onChange={(e) => {
+                    const opts = Array.from(e.target.selectedOptions).map(o => o.value)
+                    setFormData({ ...formData, preferred_group: opts })
+                  }}
+                  className="input h-28"
+                >
+                  {groups.map(g => (
+                    <option key={g.id} value={g.group_name}>{g.group_name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Giữ Ctrl/⌘ để chọn nhiều nhóm</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bộ nhớ (GB)</label>
                 <input
-                  type="text"
-                  value={formData.mac_address}
-                  onChange={(e) => setFormData({ ...formData, mac_address: e.target.value })}
+                  type="number"
+                  min="0"
+                  value={formData.memory_gb}
+                  onChange={(e) => setFormData({ ...formData, memory_gb: e.target.value === '' ? '' : parseInt(e.target.value) })}
                   className="input"
-                  placeholder="00:11:22:33:44:55"
+                  placeholder="Ví dụ: 16"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chạy Phân Tích</label>
+                <textarea
+                  value={formData.recommended_software}
+                  onChange={(e) => setFormData({ ...formData, recommended_software: e.target.value })}
+                  className="input"
+                  placeholder="Danh sách chạy phân tích"
+                  rows={3}
                 />
               </div>
 

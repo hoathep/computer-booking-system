@@ -14,6 +14,7 @@ import AdminComputers from './pages/admin/AdminComputers'
 import AdminBookings from './pages/admin/AdminBookings'
 import AdminGroups from './pages/admin/AdminGroups'
 import AdminTranslations from './pages/admin/AdminTranslations'
+import AdminReports from './pages/admin/AdminReports'
 import Layout from './components/Layout'
 import AdminLayout from './components/AdminLayout'
 import './i18n'
@@ -42,6 +43,7 @@ function App() {
               <Route path="computers" element={<AdminComputers />} />
               <Route path="bookings" element={<AdminBookings />} />
               <Route path="groups" element={<AdminGroups />} />
+              <Route path="reports" element={<AdminReports />} />
               <Route path="translations" element={<AdminTranslations />} />
             </Route>
           </Routes>

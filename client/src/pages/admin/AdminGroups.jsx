@@ -8,7 +8,8 @@ export default function AdminGroups() {
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
     group_name: '',
-    max_concurrent_bookings: 1
+    max_concurrent_bookings: 1,
+    no_show_minutes: 15
   })
   const [message, setMessage] = useState(null)
 
@@ -31,12 +32,14 @@ export default function AdminGroups() {
     if (group) {
       setFormData({
         group_name: group.group_name,
-        max_concurrent_bookings: group.max_concurrent_bookings
+        max_concurrent_bookings: group.max_concurrent_bookings,
+        no_show_minutes: group.no_show_minutes ?? 15
       })
     } else {
       setFormData({
         group_name: '',
-        max_concurrent_bookings: 1
+        max_concurrent_bookings: 1,
+        no_show_minutes: 15
       })
     }
     setShowModal(true)
@@ -112,6 +115,11 @@ export default function AdminGroups() {
                 <span className="text-2xl font-bold text-purple-600">{group.max_concurrent_bookings}</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">máy cùng lúc</p>
+
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-sm text-gray-600">Huỷ đặt nếu không sử dụng sau (phút):</span>
+                <span className="text-lg font-semibold text-gray-800">{group.no_show_minutes ?? 15}</span>
+              </div>
             </div>
           </div>
         ))}
@@ -159,6 +167,23 @@ export default function AdminGroups() {
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Số máy tối đa mà người dùng trong nhóm này có thể đặt cùng lúc
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Huỷ đặt nếu không sử dụng sau (phút)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.no_show_minutes}
+                  onChange={(e) => setFormData({ ...formData, no_show_minutes: parseInt(e.target.value) })}
+                  className="input"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Nếu đến giờ mà chưa dùng, sau thời gian này booking sẽ bị huỷ tự động
                 </p>
               </div>
 
