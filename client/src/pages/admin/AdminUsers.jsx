@@ -221,23 +221,24 @@ export default function AdminUsers() {
                     <button
                       onClick={() => handleOpenModal(user)}
                       className="text-primary-600 hover:text-primary-700 mr-3"
+                      title={t('common.edit')}
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={async () => {
-                        const pwd = prompt('Nhập mật khẩu mới (≥ 6 ký tự):')
+                        const pwd = prompt(t('auth.promptNewPassword'))
                         if (!pwd) return
-                        if (pwd.length < 6) { setMessage({ type: 'error', text: 'Mật khẩu phải ≥ 6 ký tự' }); return }
+                        if (pwd.length < 6) { setMessage({ type: 'error', text: t('auth.passwordTooShort') }); return }
                         try {
                           await axios.post(`/api/admin/users/${user.id}/password`, { password: pwd })
-                          setMessage({ type: 'success', text: `Đã đổi mật khẩu cho '${user.username}'` })
+                          setMessage({ type: 'success', text: t('auth.passwordChangeSuccessUser', { username: user.username }) })
                         } catch (e) {
-                          setMessage({ type: 'error', text: e.response?.data?.error || 'Đổi mật khẩu thất bại' })
+                          setMessage({ type: 'error', text: e.response?.data?.error || t('auth.passwordChangeFailed') })
                         }
                       }}
                       className="text-blue-600 hover:text-blue-700 mr-3"
-                      title="Đổi mật khẩu"
+                      title={t('auth.changePassword')}
                     >
                       <Save className="h-4 w-4" />
                     </button>
@@ -246,13 +247,14 @@ export default function AdminUsers() {
                         <button
                           onClick={() => handleBanToggle(user)}
                           className={`mr-3 ${user.banned ? 'text-green-600 hover:text-green-700' : 'text-yellow-600 hover:text-yellow-700'}`}
-                          title={user.banned ? 'Unban' : 'Ban'}
+                          title={user.banned ? t('admin.unban') : t('admin.ban')}
                         >
                           {user.banned ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
                         </button>
                         <button
                           onClick={() => handleDelete(user.id)}
                           className="text-red-600 hover:text-red-700"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -277,7 +279,7 @@ export default function AdminUsers() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.username')}</label>
                 <input
                   type="text"
                   value={formData.username}
@@ -290,7 +292,7 @@ export default function AdminUsers() {
 
               {!editingUser && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
                   <input
                     type="password"
                     value={formData.password}
@@ -302,7 +304,7 @@ export default function AdminUsers() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.fullname')}</label>
                 <input
                   type="text"
                   value={formData.fullname}
@@ -313,7 +315,7 @@ export default function AdminUsers() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.email')}</label>
                 <input
                   type="email"
                   value={formData.email}
@@ -323,19 +325,19 @@ export default function AdminUsers() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.userRole')}</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="input"
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  <option value="user">{t('common.user')}</option>
+                  <option value="admin">{t('common.admin')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nhóm</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.userGroup')}</label>
                 <select
                   value={formData.group_name}
                   onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
@@ -349,7 +351,7 @@ export default function AdminUsers() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Giới hạn booking (0 = theo nhóm)
+                  {t('admin.userLimit')} (0 = {t('admin.byGroup')})
                 </label>
                 <input
                   type="number"
@@ -362,14 +364,14 @@ export default function AdminUsers() {
 
               {editingUser && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.status')}</label>
                   <select
                     value={formData.banned}
                     onChange={(e) => setFormData({ ...formData, banned: parseInt(e.target.value) })}
                     className="input"
                   >
-                    <option value={0}>Active</option>
-                    <option value={1}>Banned</option>
+                    <option value={0}>{t('common.active')}</option>
+                    <option value={1}>{t('common.banned')}</option>
                   </select>
                 </div>
               )}
@@ -381,11 +383,11 @@ export default function AdminUsers() {
                   className="btn btn-secondary flex-1"
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Hủy
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" className="btn btn-primary flex-1">
                   <Save className="h-4 w-4 mr-2" />
-                  Lưu
+                  {t('common.save')}
                 </button>
               </div>
             </form>

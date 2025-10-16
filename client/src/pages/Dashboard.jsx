@@ -175,43 +175,5 @@ export default function Dashboard() {
   )
 }
 
-// Removed embedded PasswordChange (now in topbar)
-function PasswordChange({ onDone }) {
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const submit = async (e) => {
-    e.preventDefault()
-    if (!newPassword || newPassword.length < 6) {
-      onDone && onDone({ type: 'error', text: 'Mật khẩu mới phải ≥ 6 ký tự' })
-      return
-    }
-    setLoading(true)
-    try {
-      await axios.post('/api/auth/change-password', { currentPassword, newPassword })
-      onDone && onDone({ type: 'success', text: 'Đổi mật khẩu thành công' })
-      setCurrentPassword(''); setNewPassword('')
-    } catch (e) {
-      onDone && onDone({ type: 'error', text: e.response?.data?.error || 'Đổi mật khẩu thất bại' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-2">
-      <div>
-        <label className="block text-sm text-gray-700 mb-1">Mật khẩu hiện tại</label>
-        <input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} className="input" />
-      </div>
-      <div>
-        <label className="block text-sm text-gray-700 mb-1">Mật khẩu mới</label>
-        <input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} className="input" required />
-      </div>
-      <button type="submit" disabled={loading} className="btn btn-primary text-sm">{loading ? '...' : 'Lưu mật khẩu'}</button>
-    </form>
-  )
-}
 
 

@@ -4,11 +4,11 @@ import { useTranslation } from '../hooks/useTranslation'
 import axios from 'axios'
 import { Monitor, MapPin, Calendar, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format, addHours, startOfDay, endOfDay, eachMinuteOfInterval, isSameMinute, isWithinInterval, addDays } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { vi, ja, enUS } from 'date-fns/locale'
 
 export default function Computers() {
   const { user } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [computers, setComputers] = useState([])
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -248,9 +248,11 @@ export default function Computers() {
           <h2 className="text-xl font-bold text-gray-900">
             {format(selectedDate, 'dd/MM/yyyy', { locale: vi })}
           </h2>
-          <p className="text-sm text-gray-600">
-            {format(selectedDate, 'EEEE', { locale: vi })}
-          </p>
+            <p className="text-sm text-gray-600">
+              {format(selectedDate, 'EEEE', { 
+                locale: i18n.language === 'vi' ? vi : i18n.language === 'ja' ? ja : enUS 
+              })}
+            </p>
         </div>
         <button
           onClick={() => setSelectedDate(addDays(selectedDate, 1))}
@@ -342,23 +344,25 @@ export default function Computers() {
               {selectedComputer ? (
                 <div className="space-y-2">
                   {/* Time Header */}
-                  <div className="time-grid mb-2 overflow-x-auto" ref={headerScrollRef} onScroll={syncHeaderScroll}>
-                    <div className="min-w-max grid grid-flow-col auto-cols-[48px] gap-0">
+                  <div className="time-grid mb-2 overflow-x-hidden" ref={headerScrollRef} onScroll={syncHeaderScroll}>
+                    <div className="min-w-max grid grid-flow-col auto-cols-[18px] gap-1 items-end">
                       {timeSlots.map((timeSlot, i) => (
-                        <div key={timeSlot.getTime()} data-idx={i} className="text-center text-xs font-medium text-gray-600 py-1">
-                          {format(timeSlot, 'HH:mm')}
+                        <div key={timeSlot.getTime()} data-idx={i} className="text-center text-[13px] font-medium text-gray-700 py-0 leading-none">
+                          {format(timeSlot, 'mm') === '00' ? `${format(timeSlot, 'H')}h` : ''}
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   {/* Time Grid */}
-                  <div className="time-grid overflow-x-auto" ref={gridScrollRef} onScroll={syncGridScroll}>
-                    <div className="min-w-max grid grid-flow-col auto-cols-[48px] gap-1">
+                  <div className="time-grid overflow-x-hidden" ref={gridScrollRef} onScroll={syncGridScroll}>
+                    <div className="min-w-max grid grid-flow-col auto-cols-[18px] gap-1">
                     {timeSlots.map((timeSlot) => {
                       const isBooked = isTimeSlotBooked(selectedComputer, timeSlot)
                       const isSelected = isTimeSlotSelected(timeSlot)
                       const isCurrentHour = isSameMinute(timeSlot, new Date())
+                      const hour = timeSlot.getHours()
+                      const inWorking = hour >= 8 && hour < 17
                       
                       return (
                         <button
@@ -367,14 +371,16 @@ export default function Computers() {
                           onMouseDown={() => handleTimeSlotMouseDown(timeSlot)}
                           onMouseEnter={() => handleTimeSlotMouseEnter(timeSlot)}
                           disabled={isBooked}
-                          className={`h-8 rounded text-xs font-medium transition-all duration-200 ${
+                          className={`h-[22px] rounded text-[11px] font-medium transition-all duration-200 ${
                             isBooked
                               ? 'bg-red-200 text-red-600 cursor-not-allowed opacity-60'
                               : isSelected
                               ? 'bg-primary-500 text-white shadow-md'
                               : isCurrentHour
                               ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : inWorking
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                           }`}
                           title={`${format(timeSlot, 'HH:mm')}`}
                         >
@@ -395,45 +401,26 @@ export default function Computers() {
           </div>
         </div>
 
-        {/* Booking Actions */}
-        {selectedComputer && selectedTimeSlots.length > 0 && (
-          <div className="p-4 bg-gray-50 border-t">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                {t('computers.selectedTime')}: {selectedTimeSlots.length} {t('computers.hours')}
-                <span className="ml-2 text-primary-600 font-medium">
-                  {format(new Date(Math.min(...selectedTimeSlots)), 'HH:mm')} - {format(new Date(Math.max(...selectedTimeSlots) + 60 * 60 * 1000), 'HH:mm')}
-                </span>
-              </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleBookingSubmit}
-                      className="btn btn-primary"
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      {t('computers.confirmBooking')}
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!selectedComputer || selectedTimeSlots.length === 0) return
-                        try {
-                          const startTime = new Date(Math.min(...selectedTimeSlots))
-                          const endTime = new Date(Math.max(...selectedTimeSlots) + 30 * 60 * 1000)
-                          const response = await axios.get(`/api/bookings/debug/${selectedComputer.id}`, {
-                            params: { start_time: startTime.toISOString(), end_time: endTime.toISOString() }
-                          })
-                          console.log('Debug bookings:', response.data)
-                          alert(`Found ${response.data.bookings.length} bookings:\n${JSON.stringify(response.data.bookings, null, 2)}`)
-                        } catch (e) { console.error('Debug error:', e) }
-                      }}
-                      className="btn btn-secondary text-xs"
-                    >
-                      Debug
-                    </button>
-                  </div>
-            </div>
-          </div>
-        )}
+         {/* Booking Actions */}
+         {selectedComputer && selectedTimeSlots.length > 0 && (
+           <div className="p-4 bg-gray-50 border-t">
+             <div className="flex items-center justify-between">
+               <div className="text-lg text-gray-600">
+                 {t('computers.selectedTime')}: <strong className="font-bold">{selectedTimeSlots.length * 0.5} {t('computers.hours')}</strong>
+                 <span className="ml-2 text-primary-600 font-bold">
+                   {format(new Date(Math.min(...selectedTimeSlots)), 'HH:mm')} - {format(new Date(Math.max(...selectedTimeSlots) + 30 * 60 * 1000), 'HH:mm')}
+                 </span>
+               </div>
+               <button
+                 onClick={handleBookingSubmit}
+                 className="btn btn-primary inline-flex items-center"
+               >
+                 <Calendar className="h-4 w-4 mr-2" />
+                 {t('computers.confirmBooking')}
+               </button>
+             </div>
+           </div>
+         )}
       </div>
 
       {computers.length === 0 && (

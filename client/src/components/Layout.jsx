@@ -80,21 +80,21 @@ export default function Layout() {
                     className="btn btn-secondary flex items-center text-xs px-3 py-1.5"
                   >
                     <KeyRound className="h-4 w-4 mr-1.5" />
-                    <span className="hidden xl:inline">Đổi mật khẩu</span>
+                    <span className="hidden xl:inline">{t('auth.changePassword')}</span>
                   </button>
                   {showPwd && (
                     <div className="absolute right-0 mt-2 w-72 bg-white border rounded-lg shadow-lg p-3 z-50">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-gray-900 text-sm">Đổi mật khẩu</div>
+                        <div className="font-medium text-gray-900 text-sm">{t('auth.changePassword')}</div>
                         <button onClick={() => setShowPwd(false)} className="text-gray-500 hover:text-gray-700"><X className="h-4 w-4" /></button>
                       </div>
                       <div className="space-y-2">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Mật khẩu hiện tại</label>
+                          <label className="block text-xs text-gray-600 mb-1">{t('auth.currentPassword')}</label>
                           <input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} className="input h-8" />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Mật khẩu mới</label>
+                          <label className="block text-xs text-gray-600 mb-1">{t('auth.newPassword')}</label>
                           <input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} className="input h-8" />
                         </div>
                         {pwdMsg && (
@@ -102,14 +102,14 @@ export default function Layout() {
                         )}
                         <button
                           onClick={async () => {
-                            if (!newPassword || newPassword.length < 6) { setPwdMsg({ type: 'error', text: 'Mật khẩu mới phải ≥ 6 ký tự' }); return }
+                            if (!newPassword || newPassword.length < 6) { setPwdMsg({ type: 'error', text: t('auth.passwordTooShort') }); return }
                             setPwdLoading(true)
                             try {
                               await axios.post('/api/auth/change-password', { currentPassword, newPassword })
-                              setPwdMsg({ type: 'success', text: 'Đổi mật khẩu thành công' })
+                              setPwdMsg({ type: 'success', text: t('auth.passwordChangeSuccess') })
                               setCurrentPassword(''); setNewPassword('')
                             } catch (e) {
-                              setPwdMsg({ type: 'error', text: e.response?.data?.error || 'Đổi mật khẩu thất bại' })
+                              setPwdMsg({ type: 'error', text: e.response?.data?.error || t('auth.passwordChangeFailed') })
                             } finally {
                               setPwdLoading(false)
                             }
@@ -117,7 +117,7 @@ export default function Layout() {
                           disabled={pwdLoading}
                           className="btn btn-primary w-full h-8 text-xs"
                         >
-                          {pwdLoading ? '...' : 'Lưu mật khẩu'}
+                          {pwdLoading ? '...' : t('common.save')}
                         </button>
                       </div>
                     </div>

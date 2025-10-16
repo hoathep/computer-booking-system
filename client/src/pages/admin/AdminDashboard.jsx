@@ -13,11 +13,9 @@ export default function AdminDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [debugInfo, setDebugInfo] = useState(null)
 
   useEffect(() => {
     fetchStats()
-    fetchDebugInfo()
   }, [])
 
   const fetchStats = async () => {
@@ -34,15 +32,6 @@ export default function AdminDashboard() {
     }
   }
 
-  const fetchDebugInfo = async () => {
-    try {
-      const response = await axios.get('/api/admin/debug')
-      console.log('Debug info:', response.data)
-      setDebugInfo(response.data)
-    } catch (error) {
-      console.error('Failed to fetch debug info:', error)
-    }
-  }
 
   if (loading) {
     return (
@@ -65,16 +54,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {debugInfo && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
-          <strong>Debug Info:</strong>
-          <div className="mt-2 text-sm">
-            <p>{t('admin.totalUsers') || 'Tổng Users'}: {debugInfo.counts.totalUsers} (Admin: {debugInfo.users.filter(u => u.role === 'admin').length})</p>
-            <p>{t('admin.totalComputers') || 'Tổng Máy'}: {debugInfo.counts.totalComputers}</p>
-            <p>{t('bookings.title') || 'Bookings'}: {debugInfo.counts.totalBookings}</p>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">

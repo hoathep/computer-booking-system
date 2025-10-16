@@ -82,7 +82,7 @@
     "activeBookings": "Đang sử dụng",
     "totalBookings": "Tổng đặt máy",
     "maxConcurrent": "Giới hạn đồng thời",
-    "currentBookings": "Lịch đang đặt",
+    "currentBookings": "Lịch đang hoạt động",
     "noActiveBookings": "Bạn chưa có lịch đặt máy nào",
     "bookNow": "Đặt máy ngay",
     "guide": "Hướng dẫn sử dụng",
