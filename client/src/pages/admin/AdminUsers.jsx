@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Users, Plus, Edit2, Trash2, Save, X, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { Users, Edit2, Trash2, Save, X, ShieldAlert, ShieldCheck } from 'lucide-react'
+import ResizableTable from '../../components/ResizableTable'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export default function AdminUsers() {
+  const { t } = useTranslation()
   const [users, setUsers] = useState([])
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -126,13 +129,38 @@ export default function AdminUsers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Users</h1>
-          <p className="text-gray-600 mt-1">Quản lý người dùng và phân quyền</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('admin.users')}</h1>
+          <p className="text-gray-600 mt-1">{t('admin.userManagement')}</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn btn-primary">
-          <Plus className="h-5 w-5 mr-2" />
-          Thêm User
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+            try {
+              const res = await axios.get('/api/admin/users/export', { responseType: 'blob' })
+              const url = window.URL.createObjectURL(new Blob([res.data]))
+              const a = document.createElement('a'); a.href = url; a.download = 'users-export.json'; a.click();
+              window.URL.revokeObjectURL(url)
+            } catch (e) { console.error('Export failed', e) }
+          }} className="btn btn-secondary">{t('admin.ui.export') || 'Export'}</button>
+          <label className="btn btn-secondary cursor-pointer">
+            {t('admin.ui.import') || 'Import'}
+            <input type="file" accept="application/json" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                await axios.post('/api/admin/users/import', json)
+                fetchData()
+                setMessage({ type: 'success', text: 'Import users thành công!' })
+              } catch (err) {
+                console.error(err)
+                setMessage({ type: 'error', text: err.response?.data?.error || 'Import thất bại!' })
+              } finally {
+                e.target.value = ''
+              }
+            }} />
+          </label>
+          <button onClick={() => handleOpenModal()} className="btn btn-primary">{t('admin.addUser')}</button>
+        </div>
       </div>
 
       {message && (
@@ -147,26 +175,27 @@ export default function AdminUsers() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
+          <ResizableTable>
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nhóm</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giới hạn</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            <thead>
+              <tr className="bg-blue-50 text-center text-sm">
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('auth.username') || 'Username'}</th>
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('auth.fullname') || 'Full name'}</th>
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('common.email') || 'Email'}</th>
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.role') || 'Role'}</th>
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.group') || 'Group'}</th>
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.limit') || 'Limit'}</th>
+                <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.status') || 'Status'}</th>
+                <th className="px-4 py-2 text-right border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.actions') || t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 text-sm">
               {users.map((user) => (
                 <tr key={user.id} className={`hover:bg-gray-50 ${user.banned ? 'opacity-70' : ''}`}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{user.username}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.fullname}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600">{user.email || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900 border-r border-gray-100 last:border-r-0">{user.username}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-700 border-r border-gray-100 last:border-r-0">{user.fullname}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-600 border-r border-gray-100 last:border-r-0">{user.email || '-'}</td>
+                  <td className="px-4 py-2 whitespace-nowrap border-r border-gray-100 last:border-r-0">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       user.role === 'admin' 
                         ? 'bg-purple-100 text-purple-700' 
@@ -175,25 +204,42 @@ export default function AdminUsers() {
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.group_name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">{user.max_concurrent_bookings || 'Theo nhóm'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-700 border-r border-gray-100 last:border-r-0">{user.group_name}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-700 border-r border-gray-100 last:border-r-0">{user.max_concurrent_bookings || 'Theo nhóm'}</td>
+                  <td className="px-4 py-2 whitespace-nowrap border-r border-gray-100 last:border-r-0">
                     {user.banned ? (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700 inline-flex items-center">
-                        <ShieldAlert className="h-3.5 w-3.5 mr-1" /> Banned
+                        <ShieldAlert className="h-3.5 w-3.5 mr-1" /> {t('admin.tables.banned') || 'Banned'}
                       </span>
                     ) : (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 inline-flex items-center">
-                        <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Active
+                        <ShieldCheck className="h-3.5 w-3.5 mr-1" /> {t('admin.tables.active') || 'Active'}
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-4 py-2 whitespace-nowrap text-right border-r border-gray-100 last:border-r-0">
                     <button
                       onClick={() => handleOpenModal(user)}
                       className="text-primary-600 hover:text-primary-700 mr-3"
                     >
                       <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const pwd = prompt('Nhập mật khẩu mới (≥ 6 ký tự):')
+                        if (!pwd) return
+                        if (pwd.length < 6) { setMessage({ type: 'error', text: 'Mật khẩu phải ≥ 6 ký tự' }); return }
+                        try {
+                          await axios.post(`/api/admin/users/${user.id}/password`, { password: pwd })
+                          setMessage({ type: 'success', text: `Đã đổi mật khẩu cho '${user.username}'` })
+                        } catch (e) {
+                          setMessage({ type: 'error', text: e.response?.data?.error || 'Đổi mật khẩu thất bại' })
+                        }
+                      }}
+                      className="text-blue-600 hover:text-blue-700 mr-3"
+                      title="Đổi mật khẩu"
+                    >
+                      <Save className="h-4 w-4" />
                     </button>
                     {user.role !== 'admin' && (
                       <>
@@ -217,6 +263,7 @@ export default function AdminUsers() {
               ))}
             </tbody>
           </table>
+          </ResizableTable>
         </div>
       </div>
 

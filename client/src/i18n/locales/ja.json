@@ -36,7 +36,8 @@
     "all": "すべて",
     "none": "なし",
     "yes": "はい",
-    "no": "いいえ"
+    "no": "いいえ",
+    "summary": "概要"
   },
   "auth": {
     "loginTitle": "ログイン",
@@ -134,13 +135,18 @@
   },
   "admin": {
     "title": "管理",
+    "panel": "管理パネル",
     "dashboard": "ダッシュボード",
     "users": "ユーザー管理",
     "computers": "コンピューター管理",
     "bookings": "予約管理",
+    "reports": "レポート",
     "groups": "グループ管理",
     "translations": "翻訳管理",
     "stats": "統計",
+    "guide": "管理ガイド",
+    "systemInfo": "システム情報",
+    "version": "バージョン",
     "totalUsers": "総ユーザー数",
     "totalComputers": "総コンピューター数",
     "activeBookings": "アクティブ",
@@ -172,7 +178,52 @@
     "language": "言語",
     "addTranslation": "翻訳追加",
     "editTranslation": "翻訳編集",
-    "deleteTranslation": "翻訳削除"
+    "deleteTranslation": "翻訳削除",
+    "ui": {
+      "chartTitle": "時系列",
+      "byUser": "ユーザー別",
+      "byGroup": "グループ別",
+      "day": "日",
+      "week": "週",
+      "month": "月",
+      "axisTime": "時間",
+      "axisBookings": "予約数",
+      "noData": "データなし",
+      "filterByPrefix": "接頭辞でフィルター:",
+      "englishDefault": "英語（デフォルト）",
+      "vietnamese": "ベトナム語",
+      "japanese": "日本語",
+      "export": "エクスポート",
+      "import": "インポート",
+      "maxAdvanceDays": "最大予約日数",
+      "advanceDaysSaved": "最大予約日数を保存しました",
+      "saveFailed": "保存に失敗しました"
+    },
+    "tables": {
+      "user": "ユーザー",
+      "fullname": "氏名",
+      "email": "メール",
+      "role": "役割",
+      "group": "グループ",
+      "limit": "制限",
+      "status": "ステータス",
+      "actions": "操作",
+      "computerName": "コンピューター",
+      "location": "場所",
+      "ip": "IP",
+      "preferredGroup": "優先グループ",
+      "memoryGb": "メモリ(GB)",
+      "description": "説明",
+      "bookingId": "ID",
+      "start": "開始",
+      "end": "終了",
+      "groupName": "グループ",
+      "totalUsers": "ユーザー合計",
+      "active": "アクティブ",
+      "banned": "禁止",
+      "bookingLimit": "予約上限",
+      "noShowMinutes": "未使用時自動キャンセル(分)"
+    }
   },
   "languages": {
     "vi": "Tiếng Việt",
@@ -184,8 +235,23 @@
     "bookComputer": "コンピューター予約",
     "myBookings": "私の予約",
     "admin": "管理",
+    "appTitle": "コンピューター予約",
     "settings": "設定",
     "profile": "プロフィール"
+  },
+  "reports": {
+    "bookings": "予約数",
+    "bookedHours": "予約時間",
+    "usedHours": "利用時間",
+    "noShowHours": "未使用時間",
+    "from": "開始",
+    "to": "終了",
+    "load": "レポート読込"
+  },
+  "adminExtras": {
+    "guide": "管理ガイド",
+    "systemInfo": "システム情報",
+    "version": "バージョン"
   },
   "errors": {
     "networkError": "ネットワーク接続エラー",

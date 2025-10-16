@@ -2,6 +2,9 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../database/init.js';
 import { authenticateToken, isAdmin } from '../middleware/auth.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const router = express.Router();
 
@@ -84,6 +87,23 @@ router.put('/users/:id', (req, res) => {
   }
 });
 
+// Change user password
+router.post('/users/:id/password', (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, req.params.id);
+    res.json({ message: 'Password updated' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Ban user
 router.post('/users/:id/ban', (req, res) => {
   try {
@@ -123,6 +143,75 @@ router.delete('/users/:id', (req, res) => {
 
     db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
     res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export users (JSON)
+router.get('/users/export', (req, res) => {
+  try {
+    const users = db.prepare(`
+      SELECT id, username, fullname, email, role, group_name, max_concurrent_bookings, banned, created_at
+      FROM users
+      ORDER BY created_at DESC
+    `).all();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="users-export.json"');
+    res.send(JSON.stringify({ users }, null, 2));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import users (JSON body: { users: [...] })
+router.post('/users/import', (req, res) => {
+  try {
+    const { users = [], overwrite = false } = req.body || {};
+    if (!Array.isArray(users)) return res.status(400).json({ error: 'Invalid payload: users must be an array' });
+
+    let created = 0;
+    let updated = 0;
+    for (const u of users) {
+      if (!u || !u.username || !u.fullname) continue;
+      // If payload includes a raw password, hash it; otherwise keep existing password when overwriting
+      const existing = db.prepare('SELECT * FROM users WHERE username = ?').get(u.username);
+      if (existing) {
+        if (!overwrite) continue;
+        const newPassword = u.password ? bcrypt.hashSync(u.password, 10) : existing.password;
+        db.prepare(`
+          UPDATE users SET fullname = ?, email = ?, role = ?, group_name = ?, max_concurrent_bookings = ?, banned = ?, password = ?
+          WHERE username = ?
+        `).run(
+          u.fullname,
+          u.email || null,
+          u.role || existing.role || 'user',
+          u.group_name || existing.group_name || 'default',
+          u.max_concurrent_bookings ?? existing.max_concurrent_bookings ?? null,
+          u.banned ? 1 : 0,
+          newPassword,
+          u.username
+        );
+        updated += 1;
+      } else {
+        const hashed = bcrypt.hashSync(u.password || 'password123', 10);
+        db.prepare(`
+          INSERT INTO users (username, password, fullname, email, role, group_name, max_concurrent_bookings, banned)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          u.username,
+          hashed,
+          u.fullname,
+          u.email || null,
+          u.role || 'user',
+          u.group_name || 'default',
+          u.max_concurrent_bookings ?? null,
+          u.banned ? 1 : 0
+        );
+        created += 1;
+      }
+    }
+    res.json({ message: 'Import completed', created, updated });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -219,6 +308,72 @@ router.delete('/computers/:id', (req, res) => {
   }
 });
 
+// Export computers
+router.get('/computers/export', (req, res) => {
+  try {
+    const computers = db.prepare(`
+      SELECT id, name, description, location, status, ip_address, mac_address, preferred_group, memory_gb, recommended_software
+      FROM computers
+      ORDER BY id DESC
+    `).all();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="computers-export.json"');
+    res.send(JSON.stringify({ computers }, null, 2));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import computers (JSON body: { computers: [...], overwrite?: boolean })
+router.post('/computers/import', (req, res) => {
+  try {
+    const { computers = [], overwrite = false } = req.body || {};
+    if (!Array.isArray(computers)) return res.status(400).json({ error: 'Invalid payload: computers must be an array' });
+    let created = 0; let updated = 0;
+    for (const c of computers) {
+      if (!c || !c.name) continue;
+      const existing = db.prepare('SELECT * FROM computers WHERE name = ?').get(c.name);
+      if (existing) {
+        if (!overwrite) continue;
+        db.prepare(`
+          UPDATE computers SET description = ?, location = ?, status = ?, ip_address = ?, mac_address = ?, preferred_group = ?, memory_gb = ?, recommended_software = ?
+          WHERE id = ?
+        `).run(
+          c.description || existing.description || null,
+          c.location || existing.location || null,
+          c.status || existing.status || 'available',
+          c.ip_address || existing.ip_address || null,
+          c.mac_address || existing.mac_address || null,
+          Array.isArray(c.preferred_group) ? c.preferred_group.join(',') : (c.preferred_group || existing.preferred_group || null),
+          c.memory_gb ?? existing.memory_gb ?? null,
+          c.recommended_software || existing.recommended_software || null,
+          existing.id
+        );
+        updated += 1;
+      } else {
+        db.prepare(`
+          INSERT INTO computers (name, description, location, status, ip_address, mac_address, preferred_group, memory_gb, recommended_software)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          c.name,
+          c.description || null,
+          c.location || null,
+          c.status || 'available',
+          c.ip_address || null,
+          c.mac_address || null,
+          Array.isArray(c.preferred_group) ? c.preferred_group.join(',') : (c.preferred_group || null),
+          c.memory_gb ?? null,
+          c.recommended_software || null
+        );
+        created += 1;
+      }
+    }
+    res.json({ message: 'Import completed', created, updated });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- GROUP LIMITS ---
 
 // Get all groups
@@ -261,6 +416,30 @@ router.post('/groups', (req, res) => {
   }
 });
 
+// Delete a group and reassign its users to 'default'
+router.delete('/groups/:groupName', (req, res) => {
+  try {
+    const groupName = req.params.groupName;
+    if (!groupName || groupName === 'default') {
+      return res.status(400).json({ error: 'Invalid group name' });
+    }
+
+    const existing = db.prepare('SELECT * FROM group_limits WHERE group_name = ?').get(groupName);
+    if (!existing) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Reassign users
+    db.prepare(`UPDATE users SET group_name = 'default' WHERE group_name = ?`).run(groupName);
+    // Delete group limit
+    db.prepare('DELETE FROM group_limits WHERE group_name = ?').run(groupName);
+
+    res.json({ message: 'Group deleted and users reassigned to default' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- BOOKING MANAGEMENT ---
 
 // Get all bookings
@@ -285,13 +464,26 @@ router.get('/bookings', (req, res) => {
   }
 });
 
-// Delete booking
+// Delete booking (also remove related session records)
 router.delete('/bookings/:id', (req, res) => {
   try {
-    db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
-    res.json({ message: 'Booking deleted successfully' });
+    const id = req.params.id;
+    const booking = db.prepare('SELECT id FROM bookings WHERE id = ?').get(id);
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Remove dependent session rows first to avoid FK issues
+    try {
+      db.prepare('DELETE FROM sessions WHERE booking_id = ?').run(id);
+    } catch (e) {
+      // ignore if sessions table not present
+    }
+
+    db.prepare('DELETE FROM bookings WHERE id = ?').run(id);
+    return res.json({ message: 'Booking deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -438,6 +630,396 @@ router.get('/reports/usage', (req, res) => {
       range: { from: from || null, to: to || null },
       totals,
       users
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- TRANSLATIONS MANAGEMENT ---
+
+function getLocalePaths() {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const root = path.resolve(__dirname, '..', '..'); // project root
+  return {
+    en: path.resolve(root, 'client', 'src', 'i18n', 'locales', 'en.json'),
+    vi: path.resolve(root, 'client', 'src', 'i18n', 'locales', 'vi.json'),
+    ja: path.resolve(root, 'client', 'src', 'i18n', 'locales', 'ja.json')
+  };
+}
+
+function readJson(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return {};
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw || '{}');
+  } catch (e) {
+    console.error('Translations read error at', filePath, e.message);
+    return {};
+  }
+}
+
+function writeJson(filePath, data) {
+  // simple backup
+  try {
+    if (fs.existsSync(filePath)) {
+      const backup = filePath + '.' + Date.now() + '.bak';
+      fs.copyFileSync(filePath, backup);
+    }
+  } catch {}
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function setNested(obj, keyPath, value) {
+  const parts = keyPath.split('.');
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const p = parts[i];
+    if (typeof cur[p] !== 'object' || cur[p] === null) cur[p] = {};
+    cur = cur[p];
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
+function deleteNested(obj, keyPath) {
+  const parts = keyPath.split('.');
+  const stack = [];
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const p = parts[i];
+    if (typeof cur[p] !== 'object' || cur[p] === null) return;
+    stack.push({ parent: cur, key: p });
+    cur = cur[p];
+  }
+  delete cur[parts[parts.length - 1]];
+  // Clean empty objects upwards
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const { parent, key } = stack[i];
+    if (parent[key] && typeof parent[key] === 'object' && Object.keys(parent[key]).length === 0) {
+      delete parent[key];
+    }
+  }
+}
+
+function flatten(obj, prefix = '') {
+  return Object.keys(obj).reduce((acc, k) => {
+    const val = obj[k];
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      acc.push(...flatten(val, key));
+    } else {
+      acc.push({ key, value: String(val) });
+    }
+    return acc;
+  }, []);
+}
+
+// GET all translations flattened by key with values per language
+router.get('/translations', (req, res) => {
+  try {
+    const paths = getLocalePaths();
+    const en = readJson(paths.en);
+    const vi = readJson(paths.vi);
+    const ja = readJson(paths.ja);
+    const enFlat = flatten(en);
+    const viFlat = flatten(vi);
+    const jaFlat = flatten(ja);
+    const map = new Map();
+    const add = (arr, lang) => arr.forEach(({ key, value }) => {
+      if (!map.has(key)) map.set(key, {});
+      map.get(key)[lang] = value;
+    });
+    add(enFlat, 'en'); add(viFlat, 'vi'); add(jaFlat, 'ja');
+    const rows = Array.from(map.entries()).map(([key, vals]) => ({ key, en: vals.en || '', vi: vals.vi || '', ja: vals.ja || '' }));
+    res.json({ rows });
+  } catch (error) {
+    console.error('GET /translations error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPSERT a translation key values: { key, en, vi, ja }
+router.post('/translations', (req, res) => {
+  try {
+    const { key, en: enVal, vi: viVal, ja: jaVal } = req.body;
+    if (!key) return res.status(400).json({ error: 'Key is required' });
+    const paths = getLocalePaths();
+    const en = readJson(paths.en);
+    const vi = readJson(paths.vi);
+    const ja = readJson(paths.ja);
+    if (enVal !== undefined) setNested(en, key, enVal);
+    if (viVal !== undefined) setNested(vi, key, viVal);
+    if (jaVal !== undefined) setNested(ja, key, jaVal);
+    writeJson(paths.en, en);
+    writeJson(paths.vi, vi);
+    writeJson(paths.ja, ja);
+    res.json({ message: 'Saved' });
+  } catch (error) {
+    console.error('POST /translations error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE a translation key across all locales
+router.delete('/translations/:key', (req, res) => {
+  try {
+    const key = req.params.key;
+    if (!key) return res.status(400).json({ error: 'Key is required' });
+    const paths = getLocalePaths();
+    const en = readJson(paths.en);
+    const vi = readJson(paths.vi);
+    const ja = readJson(paths.ja);
+    deleteNested(en, key);
+    deleteNested(vi, key);
+    deleteNested(ja, key);
+    writeJson(paths.en, en);
+    writeJson(paths.vi, vi);
+    writeJson(paths.ja, ja);
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    console.error('DELETE /translations error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// EXPORT locales as a single payload
+router.get('/translations/export', (req, res) => {
+  try {
+    const paths = getLocalePaths();
+    const payload = {
+      en: readJson(paths.en),
+      vi: readJson(paths.vi),
+      ja: readJson(paths.ja)
+    };
+    res.json(payload);
+  } catch (error) {
+    console.error('GET /translations/export error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// IMPORT locales: body { en, vi, ja, mode: 'merge' | 'overwrite' }
+router.post('/translations/import', (req, res) => {
+  try {
+    const { en: enBody, vi: viBody, ja: jaBody, mode = 'merge' } = req.body || {};
+    const paths = getLocalePaths();
+    const en = readJson(paths.en);
+    const vi = readJson(paths.vi);
+    const ja = readJson(paths.ja);
+
+    function deepMerge(target, source) {
+      if (!source || typeof source !== 'object') return target;
+      for (const k of Object.keys(source)) {
+        if (source[k] && typeof source[k] === 'object' && !Array.isArray(source[k])) {
+          target[k] = deepMerge(target[k] || {}, source[k]);
+        } else {
+          target[k] = source[k];
+        }
+      }
+      return target;
+    }
+
+    const newEn = mode === 'overwrite' ? (enBody || {}) : deepMerge({ ...en }, enBody || {});
+    const newVi = mode === 'overwrite' ? (viBody || {}) : deepMerge({ ...vi }, viBody || {});
+    const newJa = mode === 'overwrite' ? (jaBody || {}) : deepMerge({ ...ja }, jaBody || {});
+
+    writeJson(paths.en, newEn);
+    writeJson(paths.vi, newVi);
+    writeJson(paths.ja, newJa);
+    res.json({ message: 'Imported', mode });
+  } catch (error) {
+    console.error('POST /translations/import error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- SETTINGS: BOOKING WINDOW ---
+// Get settings
+router.get('/settings', (req, res) => {
+  try {
+    const row = db.prepare(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `).run();
+    const days = db.prepare(`SELECT value FROM settings WHERE key = 'maxAdvanceDays'`).get();
+    res.json({ maxAdvanceDays: days ? parseInt(days.value) : 7 });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update settings
+router.post('/settings', (req, res) => {
+  try {
+    const { maxAdvanceDays } = req.body;
+    if (maxAdvanceDays === undefined || maxAdvanceDays < 0 || maxAdvanceDays > 365) {
+      return res.status(400).json({ error: 'Invalid maxAdvanceDays' });
+    }
+    db.prepare(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`).run();
+    db.prepare(`INSERT INTO settings (key, value) VALUES ('maxAdvanceDays', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(String(maxAdvanceDays));
+    res.json({ message: 'Settings saved' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Usage report aggregated by group
+router.get('/reports/usage-by-group', (req, res) => {
+  try {
+    const { from, to } = req.query;
+
+    let timeFilter = '';
+    const params = [];
+    if (from) {
+      timeFilter += ' AND b.start_time >= ?';
+      params.push(from);
+    }
+    if (to) {
+      timeFilter += ' AND b.end_time <= ?';
+      params.push(to);
+    }
+
+    const rows = db.prepare(`
+      SELECT 
+        b.id as booking_id,
+        b.start_time,
+        b.end_time,
+        b.status,
+        u.group_name,
+        s.unlocked_at,
+        s.locked_at,
+        s.status as session_status
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      LEFT JOIN sessions s ON s.booking_id = b.id
+      WHERE 1=1 ${timeFilter}
+      ORDER BY b.start_time DESC
+    `).all(...params);
+
+    const now = new Date();
+    const perGroup = new Map();
+
+    for (const r of rows) {
+      const start = new Date(r.start_time);
+      const end = new Date(r.end_time);
+      const bookedMs = Math.max(0, end - start);
+
+      let usedMs = 0;
+      if (r.unlocked_at) {
+        const unlockedAt = new Date(r.unlocked_at);
+        const lockedAt = r.locked_at ? new Date(r.locked_at) : now;
+        const sessionStart = unlockedAt < start ? start : unlockedAt;
+        const sessionEnd = lockedAt > end ? end : lockedAt;
+        usedMs = Math.max(0, sessionEnd - sessionStart);
+      }
+
+      const noShowMs = Math.max(0, bookedMs - usedMs);
+
+      const key = r.group_name || 'default';
+      if (!perGroup.has(key)) {
+        perGroup.set(key, {
+          groupName: key,
+          bookings: 0,
+          bookedMs: 0,
+          usedMs: 0,
+          noShowMs: 0
+        });
+      }
+      const agg = perGroup.get(key);
+      agg.bookings += 1;
+      agg.bookedMs += bookedMs;
+      agg.usedMs += usedMs;
+      agg.noShowMs += noShowMs;
+    }
+
+    function msToHours(ms) { return +(ms / (1000 * 60 * 60)).toFixed(2); }
+
+    const groups = Array.from(perGroup.values()).map(g => ({
+      groupName: g.groupName,
+      bookings: g.bookings,
+      bookedHours: msToHours(g.bookedMs),
+      usedHours: msToHours(g.usedMs),
+      noShowHours: msToHours(g.noShowMs)
+    }));
+
+    const totals = groups.reduce((acc, g) => {
+      acc.bookings += g.bookings;
+      acc.bookedHours = +(acc.bookedHours + g.bookedHours).toFixed(2);
+      acc.usedHours = +(acc.usedHours + g.usedHours).toFixed(2);
+      acc.noShowHours = +(acc.noShowHours + g.noShowHours).toFixed(2);
+      return acc;
+    }, { bookings: 0, bookedHours: 0, usedHours: 0, noShowHours: 0 });
+
+    res.json({
+      range: { from: from || null, to: to || null },
+      totals,
+      groups
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Time-series report: aggregate bookings over time by user or group
+// Query params: mode=user|group, bucket=day|week|month, from, to
+router.get('/reports/usage-timeseries', (req, res) => {
+  try {
+    const { mode = 'user', bucket = 'day', from, to } = req.query;
+
+    const validMode = mode === 'group' ? 'group' : 'user';
+    const validBucket = ['day', 'week', 'month'].includes(bucket) ? bucket : 'day';
+
+    let timeFilter = '';
+    const params = [];
+    if (from) {
+      timeFilter += ' AND b.start_time >= ?';
+      params.push(from);
+    }
+    if (to) {
+      timeFilter += ' AND b.end_time <= ?';
+      params.push(to);
+    }
+
+    // SQLite date truncation
+    const bucketExpr = validBucket === 'day'
+      ? "date(b.start_time)"
+      : validBucket === 'week'
+      ? "strftime('%Y-%W', b.start_time)" // year-week
+      : "strftime('%Y-%m', b.start_time)"; // month
+
+    const labelSelect = validMode === 'group' ? 'u.group_name as label' : 'u.username as label';
+
+    const rows = db.prepare(`
+      SELECT ${bucketExpr} as bucket, ${labelSelect}, COUNT(b.id) as bookings
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      WHERE 1=1 ${timeFilter}
+      GROUP BY bucket, label
+      ORDER BY bucket ASC
+    `).all(...params);
+
+    // Structure: { buckets: [..], series: [{label, data: [..]}] }
+    const bucketSet = new Set(rows.map(r => r.bucket));
+    const buckets = Array.from(bucketSet).sort();
+
+    const seriesMap = new Map();
+    for (const r of rows) {
+      if (!seriesMap.has(r.label)) seriesMap.set(r.label, new Map());
+      seriesMap.get(r.label).set(r.bucket, r.bookings);
+    }
+
+    const series = Array.from(seriesMap.entries()).map(([label, m]) => ({
+      label,
+      data: buckets.map(b => m.get(b) || 0)
+    }));
+
+    res.json({
+      mode: validMode,
+      bucket: validBucket,
+      buckets,
+      series
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

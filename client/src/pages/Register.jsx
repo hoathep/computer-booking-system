@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Monitor, UserPlus } from 'lucide-react'
+import { useTranslation } from '../hooks/useTranslation'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -25,7 +27,7 @@ export default function Register() {
     setError('')
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp')
+      setError(t('auth.passwordMismatch'))
       return
     }
 
@@ -33,9 +35,9 @@ export default function Register() {
 
     try {
       await register(formData.username, formData.password, formData.fullname, formData.email)
-      navigate('/login', { state: { message: 'Đăng ký thành công! Vui lòng đăng nhập.' } })
+      navigate('/login', { state: { message: t('auth.registerSuccess') } })
     } catch (err) {
-      setError(err.response?.data?.error || 'Đăng ký thất bại')
+      setError(err.response?.data?.error || t('auth.registerError'))
     } finally {
       setLoading(false)
     }
@@ -48,7 +50,7 @@ export default function Register() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4">
             <Monitor className="h-8 w-8 text-primary-600" />
           </div>
-          <h2 className="text-3xl font-bold text-white">Đăng ký tài khoản</h2>
+          <h2 className="text-3xl font-bold text-white">{t('auth.registerTitle')}</h2>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -60,39 +62,33 @@ export default function Register() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Họ và tên
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.fullname')}</label>
               <input
                 type="text"
                 name="fullname"
                 value={formData.fullname}
                 onChange={handleChange}
                 className="input"
-                placeholder="Nhập họ và tên"
+                placeholder={t('auth.fullname')}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên đăng nhập
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.username')}</label>
               <input
                 type="text"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
                 className="input"
-                placeholder="Nhập tên đăng nhập"
+                placeholder={t('auth.username')}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email (tùy chọn)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.email')}</label>
               <input
                 type="email"
                 name="email"
@@ -104,31 +100,27 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mật khẩu
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 className="input"
-                placeholder="Nhập mật khẩu"
+                placeholder={t('auth.password')}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Xác nhận mật khẩu
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.confirmPassword')}</label>
               <input
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className="input"
-                placeholder="Nhập lại mật khẩu"
+                placeholder={t('auth.confirmPassword')}
                 required
               />
             </div>
@@ -143,16 +135,16 @@ export default function Register() {
               ) : (
                 <>
                   <UserPlus className="h-5 w-5 mr-2" />
-                  Đăng ký
+                  {t('auth.registerButton')}
                 </>
               )}
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            Đã có tài khoản?{' '}
+            {t('auth.haveAccount')}{' '}
             <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-              Đăng nhập
+              {t('auth.loginButton')}
             </Link>
           </div>
         </div>

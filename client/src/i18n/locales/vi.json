@@ -36,7 +36,8 @@
     "all": "Tất cả",
     "none": "Không có",
     "yes": "Có",
-    "no": "Không"
+    "no": "Không",
+    "summary": "Tổng quan"
   },
   "auth": {
     "loginTitle": "Đăng nhập",
@@ -134,13 +135,18 @@
   },
   "admin": {
     "title": "Quản trị",
+    "panel": "Bảng quản trị",
     "dashboard": "Dashboard",
     "users": "Quản lý Users",
     "computers": "Quản lý Máy",
     "bookings": "Quản lý Bookings",
+    "reports": "Báo cáo",
     "groups": "Quản lý Nhóm",
     "translations": "Quản lý Bản dịch",
     "stats": "Thống kê",
+    "guide": "Hướng dẫn quản trị",
+    "systemInfo": "Thông tin hệ thống",
+    "version": "Phiên bản",
     "totalUsers": "Tổng Users",
     "totalComputers": "Tổng Máy",
     "activeBookings": "Đang hoạt động",
@@ -172,7 +178,52 @@
     "language": "Ngôn ngữ",
     "addTranslation": "Thêm bản dịch",
     "editTranslation": "Sửa bản dịch",
-    "deleteTranslation": "Xóa bản dịch"
+    "deleteTranslation": "Xóa bản dịch",
+    "ui": {
+      "chartTitle": "Biểu đồ theo thời gian",
+      "byUser": "Theo User",
+      "byGroup": "Theo Group",
+      "day": "Ngày",
+      "week": "Tuần",
+      "month": "Tháng",
+      "axisTime": "Thời gian",
+      "axisBookings": "Số booking",
+      "noData": "Không có dữ liệu",
+      "filterByPrefix": "Lọc theo tiền tố:",
+      "englishDefault": "Tiếng Anh (mặc định)",
+      "vietnamese": "Tiếng Việt",
+      "japanese": "Tiếng Nhật",
+      "export": "Xuất",
+      "import": "Nhập",
+      "maxAdvanceDays": "Số ngày đặt trước tối đa",
+      "advanceDaysSaved": "Đã lưu số ngày đặt trước tối đa",
+      "saveFailed": "Lưu thất bại"
+    },
+    "tables": {
+      "user": "User",
+      "fullname": "Họ tên",
+      "email": "Email",
+      "role": "Vai trò",
+      "group": "Nhóm",
+      "limit": "Giới hạn",
+      "status": "Trạng thái",
+      "actions": "Hành động",
+      "computerName": "Máy",
+      "location": "Vị trí",
+      "ip": "IP",
+      "preferredGroup": "Nhóm ưu tiên",
+      "memoryGb": "Bộ nhớ (GB)",
+      "description": "Mô tả",
+      "bookingId": "ID",
+      "start": "Bắt đầu",
+      "end": "Kết thúc",
+      "groupName": "Nhóm",
+      "totalUsers": "Tổng user",
+      "active": "Active",
+      "banned": "Banned",
+      "bookingLimit": "Giới hạn booking",
+      "noShowMinutes": "Huỷ đặt sau (phút)"
+    }
   },
   "languages": {
     "vi": "Tiếng Việt",
@@ -184,8 +235,23 @@
     "bookComputer": "Đặt máy",
     "myBookings": "Lịch của tôi",
     "admin": "Admin",
+    "appTitle": "Computer Booking",
     "settings": "Cài đặt",
     "profile": "Hồ sơ"
+  },
+  "reports": {
+    "bookings": "Số booking",
+    "bookedHours": "Giờ đặt",
+    "usedHours": "Giờ sử dụng",
+    "noShowHours": "Không dùng",
+    "from": "Từ",
+    "to": "Đến",
+    "load": "Tải báo cáo"
+  },
+  "adminExtras": {
+    "guide": "Hướng dẫn quản trị",
+    "systemInfo": "Thông tin hệ thống",
+    "version": "Phiên bản"
   },
   "errors": {
     "networkError": "Lỗi kết nối mạng",

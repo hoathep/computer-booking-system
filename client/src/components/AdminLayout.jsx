@@ -13,7 +13,7 @@ export default function AdminLayout() {
     { to: '/admin/users', icon: Users, label: t('admin.users') },
     { to: '/admin/computers', icon: Monitor, label: t('admin.computers') },
     { to: '/admin/bookings', icon: Calendar, label: t('admin.bookings') },
-    { to: '/admin/reports', icon: BarChart, label: 'Reports' },
+    { to: '/admin/reports', icon: BarChart, label: t('admin.reports') },
     { to: '/admin/groups', icon: Users2, label: t('admin.groups') },
     { to: '/admin/translations', icon: Languages, label: t('admin.translations') },
   ]
@@ -26,7 +26,7 @@ export default function AdminLayout() {
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
               <Monitor className="h-8 w-8 text-white" />
-              <span className="ml-2 text-xl font-bold text-white hidden sm:block">Admin Panel</span>
+              <span className="ml-2 text-xl font-bold text-white hidden sm:block">{t('admin.panel')}</span>
             </div>
 
             {/* Navigation Menu */}

@@ -36,7 +36,8 @@
     "all": "All",
     "none": "None",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "summary": "Summary"
   },
   "auth": {
     "loginTitle": "Login",
@@ -134,13 +135,18 @@
   },
   "admin": {
     "title": "Administration",
+    "panel": "Admin Panel",
     "dashboard": "Dashboard",
     "users": "Manage Users",
     "computers": "Manage Computers",
     "bookings": "Manage Bookings",
+    "reports": "Reports",
     "groups": "Manage Groups",
     "translations": "Manage Translations",
     "stats": "Statistics",
+    "guide": "Admin Guide",
+    "systemInfo": "System Information",
+    "version": "Version",
     "totalUsers": "Total Users",
     "totalComputers": "Total Computers",
     "activeBookings": "Active",
@@ -172,7 +178,52 @@
     "language": "Language",
     "addTranslation": "Add Translation",
     "editTranslation": "Edit Translation",
-    "deleteTranslation": "Delete Translation"
+    "deleteTranslation": "Delete Translation",
+    "ui": {
+      "chartTitle": "Time series",
+      "byUser": "By User",
+      "byGroup": "By Group",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "axisTime": "Time",
+      "axisBookings": "Bookings",
+      "noData": "No data",
+      "filterByPrefix": "Filter by prefix:",
+      "englishDefault": "English (Default)",
+      "vietnamese": "Vietnamese",
+      "japanese": "Japanese",
+      "export": "Export",
+      "import": "Import",
+      "maxAdvanceDays": "Max advance days",
+      "advanceDaysSaved": "Saved max advance days",
+      "saveFailed": "Save failed"
+    },
+    "tables": {
+      "user": "User",
+      "fullname": "Full name",
+      "email": "Email",
+      "role": "Role",
+      "group": "Group",
+      "limit": "Limit",
+      "status": "Status",
+      "actions": "Actions",
+      "computerName": "Computer",
+      "location": "Location",
+      "ip": "IP",
+      "preferredGroup": "Preferred Group",
+      "memoryGb": "Memory (GB)",
+      "description": "Description",
+      "bookingId": "ID",
+      "start": "Start",
+      "end": "End",
+      "groupName": "Group",
+      "totalUsers": "Total users",
+      "active": "Active",
+      "banned": "Banned",
+      "bookingLimit": "Booking limit",
+      "noShowMinutes": "Auto-cancel after (mins)"
+    }
   },
   "languages": {
     "vi": "Tiếng Việt",
@@ -184,8 +235,23 @@
     "bookComputer": "Book Computer",
     "myBookings": "My Bookings",
     "admin": "Admin",
+    "appTitle": "Computer Booking",
     "settings": "Settings",
     "profile": "Profile"
+  },
+  "reports": {
+    "bookings": "Bookings",
+    "bookedHours": "Booked hours",
+    "usedHours": "Used hours",
+    "noShowHours": "No-show hours",
+    "from": "From",
+    "to": "To",
+    "load": "Load report"
+  },
+  "adminExtras": {
+    "guide": "Admin Guide",
+    "systemInfo": "System Information",
+    "version": "Version"
   },
   "errors": {
     "networkError": "Network connection error",

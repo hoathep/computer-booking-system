@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Calendar, Monitor, Clock, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { useTranslation } from '../hooks/useTranslation'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 export default function MyBookings() {
+  const { t } = useTranslation()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState(null)
@@ -32,14 +34,14 @@ export default function MyBookings() {
   }
 
   const handleCancelBooking = async (bookingId) => {
-    if (!confirm('Bạn có chắc muốn hủy đặt máy này?')) return
+    if (!confirm(t('bookings.cancelConfirm'))) return
 
     try {
       await axios.delete(`/api/bookings/${bookingId}`)
-      setMessage({ type: 'success', text: 'Hủy đặt máy thành công!' })
+      setMessage({ type: 'success', text: t('bookings.cancelSuccess') })
       fetchBookings()
     } catch (error) {
-      setMessage({ type: 'error', text: 'Hủy đặt máy thất bại!' })
+      setMessage({ type: 'error', text: t('bookings.cancelError') })
     }
   }
 
@@ -57,10 +59,10 @@ export default function MyBookings() {
     }
     
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã đặt', icon: Clock },
-      active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Đang sử dụng', icon: CheckCircle },
-      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Đã hoàn thành', icon: CheckCircle },
-      cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Đã hủy', icon: XCircle }
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: t('bookings.pending'), icon: Clock },
+      active: { bg: 'bg-green-100', text: 'text-green-700', label: t('bookings.active'), icon: CheckCircle },
+      completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: t('bookings.completed'), icon: CheckCircle },
+      cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: t('bookings.cancelled'), icon: XCircle }
     }
 
     const config = statusConfig[actualStatus] || statusConfig.pending
@@ -85,8 +87,8 @@ export default function MyBookings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Lịch đặt máy của tôi</h1>
-        <p className="text-gray-600 mt-1">Quản lý tất cả các lịch đặt máy của bạn</p>
+        <h1 className="text-3xl font-bold text-gray-900">{t('bookings.title')}</h1>
+        <p className="text-gray-600 mt-1">{t('bookings.subtitle')}</p>
       </div>
 
       {message && (
@@ -109,7 +111,7 @@ export default function MyBookings() {
       {bookings.length === 0 ? (
         <div className="text-center py-12 card">
           <Calendar className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">Bạn chưa có lịch đặt máy nào</p>
+          <p className="text-gray-500">{t('bookings.noBookings')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -130,23 +132,23 @@ export default function MyBookings() {
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-500">Vị trí:</p>
+                        <p className="text-gray-500">{t('common.location')}:</p>
                         <p className="font-medium text-gray-900">{booking.location}</p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Thời gian bắt đầu:</p>
+                        <p className="text-gray-500">{t('bookings.startTime')}:</p>
                         <p className="font-medium text-gray-900">
                           {format(new Date(booking.start_time), 'HH:mm dd/MM/yyyy', { locale: vi })}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Thời gian kết thúc:</p>
+                        <p className="text-gray-500">{t('bookings.endTime')}:</p>
                         <p className="font-medium text-gray-900">
                           {format(new Date(booking.end_time), 'HH:mm dd/MM/yyyy', { locale: vi })}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-500">Ngày đặt:</p>
+                        <p className="text-gray-500">{t('bookings.createdAt')}:</p>
                         <p className="font-medium text-gray-900">
                           {format(new Date(booking.created_at), 'dd/MM/yyyy', { locale: vi })}
                         </p>
@@ -161,7 +163,7 @@ export default function MyBookings() {
                     className="btn btn-danger ml-4"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Hủy
+                    {t('bookings.cancelBooking')}
                   </button>
                 )}
               </div>

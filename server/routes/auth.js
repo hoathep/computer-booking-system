@@ -98,5 +98,25 @@ router.get('/me', authenticateToken, (req, res) => {
   }
 });
 
+// User self change password
+router.post('/change-password', authenticateToken, (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (currentPassword && !bcrypt.compareSync(currentPassword, user.password)) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+    const hashed = bcrypt.hashSync(newPassword, 10);
+    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, req.user.id);
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
 

@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Users2, Plus, Save, X } from 'lucide-react'
+import { Users2, Save, X, Trash2, Edit2 } from 'lucide-react'
+import ResizableTable from '../../components/ResizableTable'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export default function AdminGroups() {
+  const { t } = useTranslation()
   const [groups, setGroups] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
@@ -14,7 +18,21 @@ export default function AdminGroups() {
   const [message, setMessage] = useState(null)
 
   useEffect(() => {
-    fetchGroups()
+    const fetchInitial = async () => {
+      try {
+        const [groupsRes, usersRes] = await Promise.all([
+          axios.get('/api/admin/groups'),
+          axios.get('/api/admin/users')
+        ])
+        setGroups(groupsRes.data)
+        setUsers(usersRes.data)
+      } catch (error) {
+        console.error('Failed to fetch initial groups/users:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchInitial()
   }, [])
 
   const fetchGroups = async () => {
@@ -59,6 +77,17 @@ export default function AdminGroups() {
     }
   }
 
+  const handleDeleteGroup = async (groupName) => {
+    if (!confirm(`Xoá nhóm "${groupName}"? Tất cả user trong nhóm sẽ chuyển về 'default'.`)) return
+    try {
+      await axios.delete(`/api/admin/groups/${encodeURIComponent(groupName)}`)
+      setMessage({ type: 'success', text: 'Đã xoá nhóm và chuyển user về default' })
+      fetchGroups()
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Xoá nhóm thất bại!' })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -71,13 +100,10 @@ export default function AdminGroups() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Nhóm</h1>
-          <p className="text-gray-600 mt-1">Quản lý nhóm người dùng và giới hạn booking</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('admin.groups')}</h1>
+          <p className="text-gray-600 mt-1">{t('admin.groupManagement')}</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn btn-primary">
-          <Plus className="h-5 w-5 mr-2" />
-          Thêm Nhóm
-        </button>
+        <button onClick={() => handleOpenModal()} className="btn btn-primary">{t('admin.addGroup')}</button>
       </div>
 
       {message && (
@@ -90,39 +116,63 @@ export default function AdminGroups() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {groups.map((group) => (
-          <div
-            key={group.id}
-            className="card hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleOpenModal(group)}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center flex-1">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Users2 className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="font-bold text-lg text-gray-900">{group.group_name}</h3>
-                  <p className="text-sm text-gray-600">Nhóm người dùng</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Giới hạn booking:</span>
-                <span className="text-2xl font-bold text-purple-600">{group.max_concurrent_bookings}</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">máy cùng lúc</p>
-
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-sm text-gray-600">Huỷ đặt nếu không sử dụng sau (phút):</span>
-                <span className="text-lg font-semibold text-gray-800">{group.no_show_minutes ?? 15}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
+        <ResizableTable>
+        <table className="min-w-full">
+          <thead>
+            <tr className="bg-blue-50 text-center text-sm">
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.groupName') || 'Nhóm'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.totalUsers') || 'Tổng user'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.active') || 'Active'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.banned') || 'Banned'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.bookingLimit') || 'Giới hạn booking'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.noShowMinutes') || 'Huỷ đặt sau (phút)'}</th>
+              <th className="px-4 py-2 text-right border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.actions') || 'Thao tác'}</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {groups.map((group) => {
+              const stats = users.reduce((acc, u) => {
+                if ((u.group_name || 'default') === group.group_name) {
+                  acc.total += 1
+                  if (u.banned) acc.banned += 1
+                  else acc.active += 1
+                }
+                return acc
+              }, { total: 0, active: 0, banned: 0 })
+              return (
+                <tr key={group.id} className="border-t">
+                  <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-purple-100 rounded-md">
+                        <Users2 className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="font-medium text-gray-900">{group.group_name}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{stats.total}</td>
+                  <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{stats.active}</td>
+                  <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{stats.banned}</td>
+                  <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{group.max_concurrent_bookings}</td>
+                  <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{group.no_show_minutes ?? 15}</td>
+                  <td className="px-4 py-2 text-right border-r border-gray-100 last:border-r-0">
+                    <div className="inline-flex gap-2">
+                      <button onClick={() => handleOpenModal(group)} className="btn btn-secondary inline-flex items-center">
+                        <Edit2 className="h-4 w-4 mr-1" /> Sửa
+                      </button>
+                      {group.group_name !== 'default' && (
+                        <button onClick={() => handleDeleteGroup(group.group_name)} className="btn btn-danger inline-flex items-center">
+                          <Trash2 className="h-4 w-4 mr-1" /> Xoá
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        </ResizableTable>
       </div>
 
       {groups.length === 0 && (

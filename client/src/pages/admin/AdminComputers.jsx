@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Monitor, Plus, Edit2, Trash2, Save, X } from 'lucide-react'
+import { Monitor, Edit2, Trash2, Save, X } from 'lucide-react'
+import ResizableTable from '../../components/ResizableTable'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export default function AdminComputers() {
+  const { t } = useTranslation()
   const [computers, setComputers] = useState([])
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -123,13 +126,38 @@ export default function AdminComputers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Máy tính</h1>
-          <p className="text-gray-600 mt-1">Quản lý danh sách máy tính</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('admin.computers')}</h1>
+          <p className="text-gray-600 mt-1">{t('admin.computerManagement')}</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn btn-primary">
-          <Plus className="h-5 w-5 mr-2" />
-          Thêm Máy
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+            try {
+              const res = await axios.get('/api/admin/computers/export', { responseType: 'blob' })
+              const url = window.URL.createObjectURL(new Blob([res.data]))
+              const a = document.createElement('a'); a.href = url; a.download = 'computers-export.json'; a.click();
+              window.URL.revokeObjectURL(url)
+            } catch (e) { console.error('Export failed', e) }
+          }} className="btn btn-secondary">{t('admin.ui.export') || 'Export'}</button>
+          <label className="btn btn-secondary cursor-pointer">
+            {t('admin.ui.import') || 'Import'}
+            <input type="file" accept="application/json" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                await axios.post('/api/admin/computers/import', json)
+                fetchComputers()
+                setMessage({ type: 'success', text: 'Import computers thành công!' })
+              } catch (err) {
+                console.error(err)
+                setMessage({ type: 'error', text: err.response?.data?.error || 'Import thất bại!' })
+              } finally {
+                e.target.value = ''
+              }
+            }} />
+          </label>
+          <button onClick={() => handleOpenModal()} className="btn btn-primary">{t('admin.addComputer')}</button>
+        </div>
       </div>
 
       {message && (
@@ -142,20 +170,33 @@ export default function AdminComputers() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {computers.map((computer) => (
-          <div key={computer.id} className="card hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className={`p-3 rounded-lg ${
-                  computer.status === 'available' ? 'bg-green-100' : 'bg-gray-100'
-                }`}>
-                  <Monitor className={`h-6 w-6 ${
-                    computer.status === 'available' ? 'text-green-600' : 'text-gray-600'
-                  }`} />
-                </div>
-                <div className="ml-3">
-                  <h3 className="font-bold text-lg text-gray-900">{computer.name}</h3>
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
+        <ResizableTable>
+        <table className="min-w-full">
+          <thead>
+            <tr className="bg-blue-50 text-center text-sm">
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('computers.computerName') || 'Tên máy'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.status') || 'Trạng thái'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('common.location') || 'Vị trí'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.ip') || 'IP'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.preferredGroup') || 'Nhóm ưu tiên'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.memoryGb') || 'Bộ nhớ (GB)'}</th>
+              <th className="px-4 py-2 border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.description') || 'Mô tả'}</th>
+              <th className="px-4 py-2 text-right border-r border-blue-100 last:border-r-0 text-blue-900 font-semibold">{t('admin.tables.actions') || 'Thao tác'}</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {computers.map((computer) => (
+              <tr key={computer.id} className="border-t">
+                <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-2 rounded-md ${computer.status === 'available' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                      <Monitor className={`h-4 w-4 ${computer.status === 'available' ? 'text-green-600' : 'text-gray-600'}`} />
+                    </div>
+                    <div className="font-medium text-gray-900">{computer.name}</div>
+                  </div>
+                </td>
+                <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">
                   <span className={`text-xs px-2 py-1 rounded-full ${
                     computer.status === 'available'
                       ? 'bg-green-100 text-green-700'
@@ -163,37 +204,27 @@ export default function AdminComputers() {
                   }`}>
                     {computer.status}
                   </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm text-gray-600 mb-4">
-              <p><strong>Mô tả:</strong> {computer.description || '-'}</p>
-              <p><strong>Vị trí:</strong> {computer.location || '-'}</p>
-              <p><strong>IP:</strong> {computer.ip_address || '-'}</p>
-              <p><strong>Nhóm ưu tiên:</strong> {computer.preferred_group || '-'}</p>
-              <p><strong>Bộ nhớ (GB):</strong> {computer.memory_gb ?? '-'}</p>
-              <p><strong>Chạy Phân Tích:</strong> {computer.recommended_software || '-'}</p>
-            </div>
-
-            <div className="flex space-x-2 pt-4 border-t">
-              <button
-                onClick={() => handleOpenModal(computer)}
-                className="btn btn-secondary flex-1"
-              >
-                <Edit2 className="h-4 w-4 mr-2" />
-                Sửa
-              </button>
-              <button
-                onClick={() => handleDelete(computer.id)}
-                className="btn btn-danger flex-1"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Xóa
-              </button>
-            </div>
-          </div>
-        ))}
+                </td>
+                <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{computer.location || '-'}</td>
+                <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{computer.ip_address || '-'}</td>
+                <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{computer.preferred_group || '-'}</td>
+                <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{computer.memory_gb ?? '-'}</td>
+                <td className="px-4 py-2 max-w-[280px] truncate border-r border-gray-100 last:border-r-0" title={computer.description || ''}>{computer.description || '-'}</td>
+                <td className="px-4 py-2 text-right border-r border-gray-100 last:border-r-0">
+                  <div className="inline-flex gap-2">
+                    <button onClick={() => handleOpenModal(computer)} className="btn btn-secondary inline-flex items-center">
+                      <Edit2 className="h-4 w-4 mr-1" /> Sửa
+                    </button>
+                    <button onClick={() => handleDelete(computer.id)} className="btn btn-danger inline-flex items-center">
+                      <Trash2 className="h-4 w-4 mr-1" /> Xóa
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </ResizableTable>
       </div>
 
       {/* Modal */}

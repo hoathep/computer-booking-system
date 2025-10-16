@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Users, Monitor, Calendar, TrendingUp } from 'lucide-react'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export default function AdminDashboard() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalComputers: 0,
@@ -53,8 +55,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Tổng quan hệ thống</p>
+        <h1 className="text-3xl font-bold text-gray-900">{t('admin.dashboard') || 'Dashboard'}</h1>
+        <p className="text-gray-600 mt-1">{t('admin.stats') || 'Tổng quan hệ thống'}</p>
       </div>
 
       {error && (
@@ -67,9 +69,9 @@ export default function AdminDashboard() {
         <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
           <strong>Debug Info:</strong>
           <div className="mt-2 text-sm">
-            <p>Users: {debugInfo.counts.totalUsers} (Admin: {debugInfo.users.filter(u => u.role === 'admin').length})</p>
-            <p>Computers: {debugInfo.counts.totalComputers}</p>
-            <p>Bookings: {debugInfo.counts.totalBookings}</p>
+            <p>{t('admin.totalUsers') || 'Tổng Users'}: {debugInfo.counts.totalUsers} (Admin: {debugInfo.users.filter(u => u.role === 'admin').length})</p>
+            <p>{t('admin.totalComputers') || 'Tổng Máy'}: {debugInfo.counts.totalComputers}</p>
+            <p>{t('bookings.title') || 'Bookings'}: {debugInfo.counts.totalBookings}</p>
           </div>
         </div>
       )}
@@ -78,7 +80,7 @@ export default function AdminDashboard() {
         <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100">Tổng Users</p>
+              <p className="text-blue-100">{t('admin.totalUsers') || 'Tổng Users'}</p>
               <p className="text-4xl font-bold mt-2">{stats.totalUsers}</p>
             </div>
             <div className="p-3 bg-white bg-opacity-20 rounded-lg">
@@ -90,7 +92,7 @@ export default function AdminDashboard() {
         <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100">Tổng Máy</p>
+              <p className="text-green-100">{t('admin.totalComputers') || 'Tổng Máy'}</p>
               <p className="text-4xl font-bold mt-2">{stats.totalComputers}</p>
             </div>
             <div className="p-3 bg-white bg-opacity-20 rounded-lg">
@@ -102,7 +104,7 @@ export default function AdminDashboard() {
         <div className="card bg-gradient-to-br from-orange-500 to-orange-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100">Đang hoạt động</p>
+              <p className="text-orange-100">{t('admin.activeBookings') || 'Đang hoạt động'}</p>
               <p className="text-4xl font-bold mt-2">{stats.activeBookings}</p>
             </div>
             <div className="p-3 bg-white bg-opacity-20 rounded-lg">
@@ -114,7 +116,7 @@ export default function AdminDashboard() {
         <div className="card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100">Đặt hôm nay</p>
+              <p className="text-purple-100">{t('admin.todayBookings') || 'Đặt hôm nay'}</p>
               <p className="text-4xl font-bold mt-2">{stats.todayBookings}</p>
             </div>
             <div className="p-3 bg-white bg-opacity-20 rounded-lg">
@@ -126,14 +128,14 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Hướng dẫn quản trị</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">{t('admin.guide') || 'Hướng dẫn quản trị'}</h2>
           <div className="space-y-3 text-sm text-gray-700">
             <div className="flex items-start">
               <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold text-xs">
                 1
               </div>
               <div className="ml-3">
-                <strong>Quản lý Users:</strong> Thêm, sửa, xóa người dùng và đặt giới hạn booking
+                <strong>{t('admin.users') || 'Quản lý Users'}:</strong> {t('admin.userManagement')}
               </div>
             </div>
             <div className="flex items-start">
@@ -141,7 +143,7 @@ export default function AdminDashboard() {
                 2
               </div>
               <div className="ml-3">
-                <strong>Quản lý Máy:</strong> Thêm, sửa, xóa máy tính và cập nhật trạng thái
+                <strong>{t('admin.computers') || 'Quản lý Máy'}:</strong> {t('admin.computerManagement')}
               </div>
             </div>
             <div className="flex items-start">
@@ -149,17 +151,17 @@ export default function AdminDashboard() {
                 3
               </div>
               <div className="ml-3">
-                <strong>Quản lý Nhóm:</strong> Tạo nhóm và đặt giới hạn booking cho từng nhóm
+                <strong>{t('admin.groups') || 'Quản lý Nhóm'}:</strong> {t('admin.groupManagement')}
               </div>
             </div>
           </div>
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Thông tin hệ thống</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">{t('admin.systemInfo') || 'Thông tin hệ thống'}</h2>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between py-2 border-b">
-              <span className="text-gray-600">Phiên bản:</span>
+              <span className="text-gray-600">{t('admin.version') || 'Phiên bản'}:</span>
               <span className="font-medium">1.0.0</span>
             </div>
             <div className="flex justify-between py-2 border-b">

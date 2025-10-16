@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import axios from 'axios'
 import { Monitor, MapPin, Calendar, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
-import { format, addHours, startOfDay, endOfDay, eachHourOfInterval, isSameHour, isWithinInterval, addDays } from 'date-fns'
+import { format, addHours, startOfDay, endOfDay, eachMinuteOfInterval, isSameMinute, isWithinInterval, addDays } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 export default function Computers() {
@@ -67,15 +67,48 @@ export default function Computers() {
     }
   }
 
-  // Generate time slots for the selected date (8 AM to 10 PM)
+  // Generate time slots for the selected date (full 24h) with 30-minute steps
   const generateTimeSlots = () => {
     const start = startOfDay(selectedDate)
     const end = endOfDay(selectedDate)
-    const hours = eachHourOfInterval({ start, end })
-    return hours.filter(hour => hour.getHours() >= 8 && hour.getHours() <= 22)
+    const minutes = eachMinuteOfInterval({ start, end }, { step: 30 })
+    return minutes
   }
 
   const timeSlots = generateTimeSlots()
+
+  // Horizontal scroll refs for timeline header and grid
+  const headerScrollRef = useRef(null)
+  const gridScrollRef = useRef(null)
+
+  // Sync scroll positions between header and grid
+  const syncHeaderScroll = (e) => {
+    if (!gridScrollRef.current) return
+    gridScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
+  }
+  const syncGridScroll = (e) => {
+    if (!headerScrollRef.current) return
+    headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft
+  }
+
+  // On mount/change date, focus around 08:00 to 17:00 range
+  useLayoutEffect(() => {
+    const idx = 8 * 2 // 30-min slots → 2 slots per hour
+    const header = headerScrollRef.current
+    const grid = gridScrollRef.current
+    if (!header) return
+    const scrollToTarget = () => {
+      const target = header.querySelector(`[data-idx="${idx}"]`)
+      if (target) {
+        const left = Math.max(0, target.offsetLeft - 100)
+        header.scrollLeft = left
+        if (grid) grid.scrollLeft = left
+      }
+    }
+    // Ensure after first paint
+    requestAnimationFrame(scrollToTarget)
+    setTimeout(scrollToTarget, 0)
+  }, [selectedDate, timeSlots.length])
 
   // Sort computers: available first, then booked, then in use
   const sortedComputers = [...computers].sort((a, b) => {
@@ -84,13 +117,16 @@ export default function Computers() {
   })
 
   const isTimeSlotBooked = (computer, timeSlot) => {
-    return bookings.some(booking => 
-      booking.computer_id === computer.id &&
-      isWithinInterval(timeSlot, {
-        start: new Date(booking.start_time),
-        end: new Date(booking.end_time)
-      })
-    )
+    const t = timeSlot.getTime()
+    return bookings.some(booking => {
+      if (booking.computer_id !== computer.id) return false
+      // Ignore cancelled or completed bookings for clickability
+      if (booking.status && !['pending', 'active'].includes(booking.status)) return false
+      const start = new Date(booking.start_time).getTime()
+      const end = new Date(booking.end_time).getTime()
+      // Treat interval as [start, end) so the slot exactly at end is free
+      return t >= start && t < end
+    })
   }
 
   const isTimeSlotSelected = (timeSlot) => {
@@ -104,23 +140,23 @@ export default function Computers() {
 
   const handleTimeSlotClick = (timeSlot) => {
     if (!selectedComputer) return
-
     const slotTime = timeSlot.getTime()
-    
-    if (selectedTimeSlots.includes(slotTime)) {
-      // Remove from selection
-      setSelectedTimeSlots(prev => prev.filter(time => time !== slotTime))
-    } else {
-      // Add to selection
-      setSelectedTimeSlots(prev => [...prev, slotTime].sort())
-    }
+    // Single-click selects exactly one 30-min block
+    setIsSelecting(false)
+    setSelectionStart(slotTime)
+    setSelectedTimeSlots([slotTime])
   }
 
   const handleTimeSlotMouseDown = (timeSlot) => {
     if (!selectedComputer) return
     setIsSelecting(true)
-    setSelectionStart(timeSlot.getTime())
-    setSelectedTimeSlots([timeSlot.getTime()])
+    const t = timeSlot.getTime()
+    setSelectionStart(t)
+    // Toggle exact 30-min block select on mousedown
+    setSelectedTimeSlots(prev => {
+      if (prev.length === 1 && prev[0] === t) return []
+      return [t]
+    })
   }
 
   const handleTimeSlotMouseEnter = (timeSlot) => {
@@ -132,7 +168,7 @@ export default function Computers() {
     const maxTime = Math.max(startTime, endTime)
     
     const newSlots = []
-    for (let time = minTime; time <= maxTime; time += 60 * 60 * 1000) { // Add 1 hour
+    for (let time = minTime; time <= maxTime; time += 30 * 60 * 1000) { // Add 30 minutes
       newSlots.push(time)
     }
     setSelectedTimeSlots(newSlots)
@@ -153,7 +189,7 @@ export default function Computers() {
 
     try {
       const startTime = new Date(Math.min(...selectedTimeSlots))
-      const endTime = new Date(Math.max(...selectedTimeSlots) + 60 * 60 * 1000) // Add 1 hour to last slot
+      const endTime = new Date(Math.max(...selectedTimeSlots) + 30 * 60 * 1000) // Add 30 minutes to last slot
 
       const response = await axios.post('/api/bookings', {
         computer_id: selectedComputer.id,
@@ -171,6 +207,7 @@ export default function Computers() {
       fetchComputers()
       fetchBookings()
     } catch (error) {
+      console.error('Booking error:', error.response?.data)
       setMessage({ 
         type: 'error', 
         text: error.response?.data?.error || 'Đặt máy thất bại' 
@@ -305,20 +342,23 @@ export default function Computers() {
               {selectedComputer ? (
                 <div className="space-y-2">
                   {/* Time Header */}
-                  <div className="time-grid mb-2">
-                    {timeSlots.map((timeSlot) => (
-                      <div key={timeSlot.getTime()} className="text-center text-xs font-medium text-gray-600 py-1">
-                        {format(timeSlot, 'HH:mm')}
-                      </div>
-                    ))}
+                  <div className="time-grid mb-2 overflow-x-auto" ref={headerScrollRef} onScroll={syncHeaderScroll}>
+                    <div className="min-w-max grid grid-flow-col auto-cols-[48px] gap-0">
+                      {timeSlots.map((timeSlot, i) => (
+                        <div key={timeSlot.getTime()} data-idx={i} className="text-center text-xs font-medium text-gray-600 py-1">
+                          {format(timeSlot, 'HH:mm')}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   
                   {/* Time Grid */}
-                  <div className="time-grid">
+                  <div className="time-grid overflow-x-auto" ref={gridScrollRef} onScroll={syncGridScroll}>
+                    <div className="min-w-max grid grid-flow-col auto-cols-[48px] gap-1">
                     {timeSlots.map((timeSlot) => {
                       const isBooked = isTimeSlotBooked(selectedComputer, timeSlot)
                       const isSelected = isTimeSlotSelected(timeSlot)
-                      const isCurrentHour = isSameHour(timeSlot, new Date())
+                      const isCurrentHour = isSameMinute(timeSlot, new Date())
                       
                       return (
                         <button
@@ -336,11 +376,13 @@ export default function Computers() {
                               ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                               : 'bg-green-100 text-green-700 hover:bg-green-200'
                           }`}
+                          title={`${format(timeSlot, 'HH:mm')}`}
                         >
                           {isBooked ? '❌' : isSelected ? '✓' : ''}
                         </button>
                       )
                     })}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -363,13 +405,32 @@ export default function Computers() {
                   {format(new Date(Math.min(...selectedTimeSlots)), 'HH:mm')} - {format(new Date(Math.max(...selectedTimeSlots) + 60 * 60 * 1000), 'HH:mm')}
                 </span>
               </div>
-              <button
-                onClick={handleBookingSubmit}
-                className="btn btn-primary"
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                {t('computers.confirmBooking')}
-              </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleBookingSubmit}
+                      className="btn btn-primary"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {t('computers.confirmBooking')}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!selectedComputer || selectedTimeSlots.length === 0) return
+                        try {
+                          const startTime = new Date(Math.min(...selectedTimeSlots))
+                          const endTime = new Date(Math.max(...selectedTimeSlots) + 30 * 60 * 1000)
+                          const response = await axios.get(`/api/bookings/debug/${selectedComputer.id}`, {
+                            params: { start_time: startTime.toISOString(), end_time: endTime.toISOString() }
+                          })
+                          console.log('Debug bookings:', response.data)
+                          alert(`Found ${response.data.bookings.length} bookings:\n${JSON.stringify(response.data.bookings, null, 2)}`)
+                        } catch (e) { console.error('Debug error:', e) }
+                      }}
+                      className="btn btn-secondary text-xs"
+                    >
+                      Debug
+                    </button>
+                  </div>
             </div>
           </div>
         )}

@@ -103,6 +103,20 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'End time must be after start time' });
     }
 
+    // Enforce advance window based on settings
+    try {
+      db.prepare(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`).run();
+      const row = db.prepare(`SELECT value FROM settings WHERE key = 'maxAdvanceDays'`).get();
+      const maxDays = row ? parseInt(row.value) : 7;
+      const maxAllowed = new Date();
+      maxAllowed.setDate(maxAllowed.getDate() + maxDays);
+      if (startDateTime > maxAllowed || endDateTime > maxAllowed) {
+        return res.status(400).json({ error: `Bookings allowed up to ${maxDays} days in advance` });
+      }
+    } catch (e) {
+      // ignore settings read error -> fallback already enforced
+    }
+
     // Check if computer exists
     const computer = db.prepare('SELECT * FROM computers WHERE id = ?').get(computer_id);
     if (!computer) {
@@ -122,7 +136,15 @@ router.post('/', authenticateToken, (req, res) => {
     `).get(computer_id, start_time, start_time, end_time, end_time, start_time, end_time);
 
     if (conflict) {
-      return res.status(409).json({ error: 'Computer is already booked for this time slot' });
+      return res.status(409).json({ 
+        error: 'Computer is already booked for this time slot',
+        conflict: {
+          id: conflict.id,
+          start_time: conflict.start_time,
+          end_time: conflict.end_time,
+          status: conflict.status
+        }
+      });
     }
 
     // Get user's max concurrent bookings
@@ -171,6 +193,34 @@ router.post('/', authenticateToken, (req, res) => {
       bookingId: result.lastInsertRowid,
       unlockCode
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Debug: Get all bookings for a computer in time range
+router.get('/debug/:computerId', authenticateToken, (req, res) => {
+  try {
+    const { computerId } = req.params;
+    const { start_time, end_time } = req.query;
+    
+    if (!start_time || !end_time) {
+      return res.status(400).json({ error: 'start_time and end_time required' });
+    }
+
+    const bookings = db.prepare(`
+      SELECT id, start_time, end_time, status, user_id
+      FROM bookings
+      WHERE computer_id = ?
+      AND (
+        (start_time <= ? AND end_time > ?)
+        OR (start_time < ? AND end_time >= ?)
+        OR (start_time >= ? AND end_time <= ?)
+      )
+      ORDER BY start_time
+    `).all(computerId, start_time, start_time, end_time, end_time, start_time, end_time);
+
+    res.json({ bookings, requested: { start_time, end_time } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
