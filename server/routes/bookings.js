@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../database/init.js';
 import { authenticateToken } from '../middleware/auth.js';
 import nodemailer from 'nodemailer';
+import { ERROR_MESSAGES } from '../constants/errors.js';
 
 const router = express.Router();
 
@@ -103,11 +104,11 @@ router.post('/', authenticateToken, (req, res) => {
     const now = new Date();
 
     if (startDateTime < now) {
-      return res.status(400).json({ error: 'Start time cannot be in the past' });
+      return res.status(400).json({ error: ERROR_MESSAGES.START_TIME_PAST });
     }
 
     if (endDateTime <= startDateTime) {
-      return res.status(400).json({ error: 'End time must be after start time' });
+      return res.status(400).json({ error: ERROR_MESSAGES.END_TIME_BEFORE_START });
     }
 
     // Enforce advance window based on settings
