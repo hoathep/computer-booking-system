@@ -1,4 +1,4 @@
-# 🎯 Danh sách tính năng chi tiết
+# 🎯 Danh sách tính năng chi tiết - Beta 0.2
 
 ## 🔐 Authentication & Authorization
 
@@ -251,7 +251,69 @@
 
 ---
 
-**Tổng số features đã implement: 150+**
-**Completion rate: ~95%**
+**Tổng số features đã implement: 180+**
+**Completion rate: ~98%**
+**Phiên bản: Beta 0.2**
+
+## 🆕 **Tính năng mới được thêm (2024-2025):**
+
+### **Computer Rating System**
+- [x] Đánh giá máy tính 1-5 sao sau khi sử dụng
+- [x] Tính toán rating trung bình
+- [x] Hiển thị rating trong danh sách máy
+- [x] Chỉ cho phép đánh giá trong 5 ngày sau khi hoàn thành
+- [x] Cập nhật rating nhiều lần (lưu rating cuối)
+
+### **Hot Computers Feature**
+- [x] Hiển thị máy được đặt nhiều nhất
+- [x] Sắp xếp theo "Hot" hoặc "Available"
+- [x] Thanh trượt khi danh sách dài
+- [x] Hiển thị số lượt đặt và rating
+- [x] Status badge (Available/Busy)
+
+### **Email Notifications**
+- [x] Gửi mật khẩu đăng nhập qua email
+- [x] Cấu hình SMTP server
+- [x] Template email đẹp
+- [x] Error handling khi gửi email thất bại
+
+### **Excel Export**
+- [x] Xuất báo cáo tổng hợp ra Excel
+- [x] Formatting đẹp với headers
+- [x] Multiple sheets cho các loại báo cáo
+- [x] Download trực tiếp từ browser
+
+### **Advanced Reporting**
+- [x] Biểu đồ thời gian với Chart.js
+- [x] Filter theo User/Group/Computer
+- [x] Time buckets: Day/Week/Month/Year
+- [x] Interactive charts
+- [x] Export charts as images
+
+### **Group Management**
+- [x] Import danh sách nhóm từ CSV
+- [x] Export danh sách nhóm ra CSV
+- [x] Validation dữ liệu import
+- [x] Error handling và feedback
+
+### **Footer Customization**
+- [x] Tùy chỉnh thông tin footer
+- [x] Support email, phone, Teams link
+- [x] Copyright information
+- [x] Admin settings page
+
+### **Enhanced UI/UX**
+- [x] Layout gọn gàng hơn
+- [x] Thanh trượt cho danh sách dài
+- [x] Hiển thị IP address
+- [x] Thời gian trên 1 dòng
+- [x] Icons mạng LAN
+- [x] Responsive design tốt hơn
+
+### **Multi-language Support**
+- [x] Đầy đủ 3 ngôn ngữ (VI/EN/JA)
+- [x] i18n keys cho tất cả tính năng mới
+- [x] Language switcher
+- [x] Admin translation management
 
 

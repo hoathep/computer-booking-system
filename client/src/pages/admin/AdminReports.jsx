@@ -12,8 +12,8 @@ export default function AdminReports() {
   const [error, setError] = useState('')
   const [mode, setMode] = useState('user') // 'user' | 'group'
   const [data, setData] = useState({ totals: { bookings: 0, bookedHours: 0, usedHours: 0, noShowHours: 0 }, users: [], groups: [] })
-  const [tsBucket, setTsBucket] = useState('day') // day | week | month
-  const [tsMode, setTsMode] = useState('user') // user | group
+  const [tsBucket, setTsBucket] = useState('day') // hour | day | week | month
+  const [tsMode, setTsMode] = useState('user') // user | group | computer
   const [tsLoading, setTsLoading] = useState(false)
   const [tsError, setTsError] = useState('')
   const [tsData, setTsData] = useState({ buckets: [], series: [], mode: 'user', bucket: 'day' })
@@ -98,18 +98,20 @@ export default function AdminReports() {
       {/* Time-series chart at top */}
       <div className="bg-white rounded-xl shadow p-4 space-y-3">
         <div className="flex flex-col gap-3">
-          <h3 className="text-lg font-semibold">{t('admin.ui.chartTitle') || 'Biểu đồ theo thời gian'}</h3>
+          <h3 className="text-2xl font-bold">{t('admin.ui.chartTitle') || 'Biểu đồ theo thời gian'}</h3>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Tabs: User / Group */}
+            {/* Tabs: User / Group / Computer */}
             <div className="inline-flex rounded-lg overflow-hidden border shrink-0">
               <button className={`px-3 py-1.5 text-sm ${tsMode === 'user' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setTsMode('user')}>{t('admin.ui.byUser') || 'Theo User'}</button>
               <button className={`px-3 py-1.5 text-sm ${tsMode === 'group' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setTsMode('group')}>{t('admin.ui.byGroup') || 'Theo Group'}</button>
+              <button className={`px-3 py-1.5 text-sm ${tsMode === 'computer' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setTsMode('computer')}>{t('admin.ui.byComputer') || 'Theo Máy'}</button>
             </div>
             {/* Bucket selector */}
             <div className="inline-flex rounded-lg overflow-hidden border shrink-0">
               <button className={`px-3 py-1.5 text-sm ${tsBucket === 'day' ? 'bg-gray-900 text-white' : 'bg-white'}`} onClick={() => setTsBucket('day')}>{t('admin.ui.day') || 'Ngày'}</button>
               <button className={`px-3 py-1.5 text-sm ${tsBucket === 'week' ? 'bg-gray-900 text-white' : 'bg-white'}`} onClick={() => setTsBucket('week')}>{t('admin.ui.week') || 'Tuần'}</button>
               <button className={`px-3 py-1.5 text-sm ${tsBucket === 'month' ? 'bg-gray-900 text-white' : 'bg-white'}`} onClick={() => setTsBucket('month')}>{t('admin.ui.month') || 'Tháng'}</button>
+              <button className={`px-3 py-1.5 text-sm ${tsBucket === 'year' ? 'bg-gray-900 text-white' : 'bg-white'}`} onClick={() => setTsBucket('year')}>{t('admin.ui.year') || 'Năm'}</button>
             </div>
             {/* Label selector */}
             <div className="min-w-[180px] sm:min-w-[220px]">
@@ -131,16 +133,38 @@ export default function AdminReports() {
             }}
             loading={tsLoading}
             height={280}
-            xLabel={tsBucket === 'day' ? (t('admin.ui.day') || 'Ngày') : tsBucket === 'week' ? (t('admin.ui.week') || 'Tuần') : (t('admin.ui.month') || 'Tháng')}
+            xLabel={tsBucket === 'day' ? (t('admin.ui.day') || 'Ngày') : tsBucket === 'week' ? (t('admin.ui.week') || 'Tuần') : tsBucket === 'month' ? (t('admin.ui.month') || 'Tháng') : (t('admin.ui.year') || 'Năm')}
             yLabel={t('reports.bookedHours') || 'Giờ đặt'}
           />
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{t('admin.reports') || 'Báo cáo'}</h1>
-        <div className="inline-flex rounded-lg overflow-hidden border">
-          <button className={`px-3 py-1.5 text-sm ${mode === 'user' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setMode('user')}>{t('admin.ui.byUser') || 'Theo User'}</button>
-          <button className={`px-3 py-1.5 text-sm ${mode === 'group' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setMode('group')}>{t('admin.ui.byGroup') || 'Theo Group'}</button>
+        <h1 className="text-2xl font-bold text-gray-900">{t('admin.quickReports') || 'Báo Cáo Nhanh'}</h1>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg overflow-hidden border">
+            <button className={`px-3 py-1.5 text-sm ${mode === 'user' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setMode('user')}>{t('admin.ui.byUser') || 'Theo User'}</button>
+            <button className={`px-3 py-1.5 text-sm ${mode === 'group' ? 'bg-primary-600 text-white' : 'bg-white'}`} onClick={() => setMode('group')}>{t('admin.ui.byGroup') || 'Theo Group'}</button>
+          </div>
+          <button onClick={async () => {
+            try {
+              const params = new URLSearchParams();
+              params.append('mode', mode);
+              if (from) params.append('from', formatDateForAPI(from));
+              if (to) params.append('to', formatDateForAPI(to));
+              const res = await axios.get(`/api/admin/reports/export-summary?${params.toString()}`, { responseType: 'blob' });
+              const url = window.URL.createObjectURL(new Blob([res.data]));
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `summary_report_${mode}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              window.URL.revokeObjectURL(url);
+            } catch (e) {
+              console.error(e);
+              alert('Xuất báo cáo thất bại');
+            }
+          }} className="btn btn-secondary">{t('admin.ui.export') || 'Xuất'}</button>
         </div>
       </div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-3 sm:space-y-0">
@@ -227,7 +251,7 @@ export default function AdminReports() {
               {loading ? (
                 <tr><td className="px-4 py-3" colSpan={6}>Đang tải...</td></tr>
               ) : (
-                data.users.map(u => (
+                (Array.isArray(data.users) ? data.users : []).map(u => (
                   <tr key={u.userId} className="border-t">
                     <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{u.username}</td>
                     <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{u.fullname}</td>
@@ -259,7 +283,7 @@ export default function AdminReports() {
               {loading ? (
                 <tr><td className="px-4 py-3" colSpan={5}>Đang tải...</td></tr>
               ) : (
-                (data.groups || []).map(g => (
+                (Array.isArray(data.groups) ? data.groups : []).map(g => (
                   <tr key={g.groupName} className="border-t">
                     <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{g.groupName}</td>
                     <td className="px-4 py-2 border-r border-gray-100 last:border-r-0">{g.bookings}</td>

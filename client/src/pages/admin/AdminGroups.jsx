@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Users2, Save, X, Trash2, Edit2 } from 'lucide-react'
+import { Users2, Save, X, Trash2, Edit2, Download, Upload } from 'lucide-react'
 import ResizableTable from '../../components/ResizableTable'
 import { useTranslation } from '../../hooks/useTranslation'
 
@@ -10,6 +10,8 @@ export default function AdminGroups() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState(null)
   const [formData, setFormData] = useState({
     group_name: '',
     max_concurrent_bookings: 1,
@@ -88,6 +90,59 @@ export default function AdminGroups() {
     }
   }
 
+  const handleExportGroups = async () => {
+    try {
+      const response = await axios.get('/api/admin/groups/export', {
+        responseType: 'blob'
+      })
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `groups_export_${new Date().toISOString().split('T')[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      
+      setMessage({ type: 'success', text: t('admin.importExport.exportSuccess') })
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || t('admin.importExport.exportError') })
+    }
+  }
+
+  const handleImportFile = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+      setImportFile(file)
+    }
+  }
+
+  const handleImportGroups = async () => {
+    if (!importFile) {
+      setMessage({ type: 'error', text: t('admin.importExport.selectFile') })
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      
+      await axios.post('/api/admin/groups/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
+      setMessage({ type: 'success', text: t('admin.importExport.importSuccess') })
+      setShowImportModal(false)
+      setImportFile(null)
+      fetchGroups()
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || t('admin.importExport.importError') })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -103,7 +158,17 @@ export default function AdminGroups() {
           <h1 className="text-3xl font-bold text-gray-900">{t('admin.groups')}</h1>
           <p className="text-gray-600 mt-1">{t('admin.groupManagement')}</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn btn-primary">{t('admin.addGroup')}</button>
+        <div className="flex gap-3">
+          <button onClick={handleExportGroups} className="btn btn-secondary inline-flex items-center">
+            <Download className="h-4 w-4 mr-2" />
+            {t('admin.ui.export')}
+          </button>
+          <button onClick={() => setShowImportModal(true)} className="btn btn-secondary inline-flex items-center">
+            <Upload className="h-4 w-4 mr-2" />
+            {t('admin.ui.import')}
+          </button>
+          <button onClick={() => handleOpenModal()} className="btn btn-primary">{t('admin.addGroup')}</button>
+        </div>
       </div>
 
       {message && (
@@ -256,6 +321,61 @@ export default function AdminGroups() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              {t('admin.importExport.importModal.title')}
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('admin.importExport.importModal.selectFile')}
+                </label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportFile}
+                  className="input"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('admin.importExport.importModal.fileFormat')}
+                </p>
+              </div>
+
+              <div className="p-3 bg-yellow-50 rounded-lg text-sm text-gray-700">
+                <strong>Lưu ý:</strong> {t('admin.importExport.importModal.note')}
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportFile(null)
+                  }}
+                  className="btn btn-secondary flex-1"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  {t('admin.importExport.importModal.cancel')}
+                </button>
+                <button 
+                  onClick={handleImportGroups}
+                  className="btn btn-primary flex-1"
+                  disabled={!importFile}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {t('admin.importExport.importModal.import')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

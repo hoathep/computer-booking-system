@@ -1,6 +1,7 @@
 import { Outlet, NavLink, Link } from 'react-router-dom'
+import Footer from './Footer'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages, BarChart } from 'lucide-react'
+import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages, BarChart, Settings } from 'lucide-react'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useTranslation } from '../hooks/useTranslation'
 
@@ -8,14 +9,21 @@ export default function AdminLayout() {
   const { logout } = useAuth()
   const { t } = useTranslation()
 
-  const navItems = [
-    { to: '/admin/dashboard', icon: LayoutDashboard, label: t('admin.dashboard') },
-    { to: '/admin/users', icon: Users, label: t('admin.users') },
-    { to: '/admin/computers', icon: Monitor, label: t('admin.computers') },
+  const manageMenu = [
     { to: '/admin/bookings', icon: Calendar, label: t('admin.bookings') },
-    { to: '/admin/reports', icon: BarChart, label: t('admin.reports') },
+  ]
+
+  const reportMenu = [
+    { to: '/admin/reports', icon: BarChart, label: t('admin.reportsSummary') || t('admin.reports') },
+  ]
+
+  const systemSettingMenu = [
+    { to: '/admin/users', icon: Users, label: t('admin.users') },
     { to: '/admin/groups', icon: Users2, label: t('admin.groups') },
+    { to: '/admin/computers', icon: Monitor, label: t('admin.computers') },
+    { to: '/admin/email-server', icon: Settings, label: t('admin.emailServer.title') || 'Email Server' },
     { to: '/admin/translations', icon: Languages, label: t('admin.translations') },
+    { to: '/admin/footer', icon: Settings, label: t('admin.footer.title') || 'Footer' },
   ]
 
   return (
@@ -31,22 +39,55 @@ export default function AdminLayout() {
 
             {/* Navigation Menu */}
             <div className="hidden md:flex md:space-x-1 lg:space-x-2">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 nav-item btn-hover-lift ${
-                      isActive
-                        ? 'bg-primary-800 text-white shadow-lg'
-                        : 'text-primary-100 hover:bg-primary-600 hover:text-white'
-                    }`
-                  }
-                >
-                  <item.icon className="h-4 w-4 mr-1.5" />
-                  <span className="hidden lg:inline">{item.label}</span>
-                </NavLink>
-              ))}
+              <NavLink to="/admin/dashboard" className={({ isActive }) => `inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive ? 'bg-primary-800 text-white shadow-lg' : 'text-primary-100 hover:bg-primary-600 hover:text-white'}`}>
+                <LayoutDashboard className="h-4 w-4 mr-1.5" />
+                <span className="hidden lg:inline">{t('admin.dashboard')}</span>
+              </NavLink>
+
+              {/* Manage Booking */}
+              <div className="relative group">
+                <div className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-primary-100 group-hover:bg-primary-600 group-hover:text-white cursor-default">
+                  <Calendar className="h-4 w-4 mr-1.5" />
+                  <span className="hidden lg:inline">{t('admin.menu.manageBooking') || 'Manage Booking'}</span>
+                </div>
+                <div className="absolute top-full left-0 hidden group-hover:block bg-white rounded-lg shadow-lg py-1 min-w-[200px] z-50">
+                  {manageMenu.map(item => (
+                    <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex items-center px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'}`}>
+                      <item.icon className="h-4 w-4 mr-2" /> {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+
+              {/* Report */}
+              <div className="relative group">
+                <div className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-primary-100 group-hover:bg-primary-600 group-hover:text-white cursor-default">
+                  <BarChart className="h-4 w-4 mr-1.5" />
+                  <span className="hidden lg:inline">{t('admin.menu.report') || 'Report'}</span>
+                </div>
+                <div className="absolute top-full left-0 hidden group-hover:block bg-white rounded-lg shadow-lg py-1 min-w-[200px] z-50">
+                  {reportMenu.map(item => (
+                    <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex items-center px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'}`}>
+                      <item.icon className="h-4 w-4 mr-2" /> {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+
+              {/* System Setting */}
+              <div className="relative group">
+                <div className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-primary-100 group-hover:bg-primary-600 group-hover:text-white cursor-default">
+                  <Settings className="h-4 w-4 mr-1.5" />
+                  <span className="hidden lg:inline">{t('admin.menu.systemSetting') || 'System Setting'}</span>
+                </div>
+                <div className="absolute top-full left-0 hidden group-hover:block bg-white rounded-lg shadow-lg py-1 min-w-[240px] z-50">
+                  {systemSettingMenu.map(item => (
+                    <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex items-center px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'}`}>
+                      <item.icon className="h-4 w-4 mr-2" /> {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Right Side */}
@@ -91,6 +132,7 @@ export default function AdminLayout() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+      <Footer />
     </div>
   )
 }

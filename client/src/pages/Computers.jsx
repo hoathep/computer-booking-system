@@ -110,10 +110,18 @@ export default function Computers() {
     setTimeout(scrollToTarget, 0)
   }, [selectedDate, timeSlots.length])
 
-  // Sort computers: available first, then booked, then in use
+  // Sort computers: booked first, then by status
   const sortedComputers = [...computers].sort((a, b) => {
-    const statusOrder = { 'available': 0, 'booked': 1, 'in_use': 2 }
-    return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0)
+    // First: booked computers (in_use or booked) - these go to top
+    if ((a.status === 'in_use' || a.status === 'booked') && !(b.status === 'in_use' || b.status === 'booked')) return -1
+    if (!(a.status === 'in_use' || a.status === 'booked') && (b.status === 'in_use' || b.status === 'booked')) return 1
+    
+    // Second: maintenance and disabled
+    if ((a.status === 'maintenance' || a.status === 'disabled') && !(b.status === 'maintenance' || b.status === 'disabled')) return 1
+    if (!(a.status === 'maintenance' || a.status === 'disabled') && (b.status === 'maintenance' || b.status === 'disabled')) return -1
+    
+    // Third: by name
+    return a.name.localeCompare(b.name)
   })
 
   const isTimeSlotBooked = (computer, timeSlot) => {
@@ -129,11 +137,43 @@ export default function Computers() {
     })
   }
 
+  // Calculate business hours availability status
+  const getBusinessHoursStatus = (computer) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const businessStart = new Date(today.getTime() + 8 * 60 * 60 * 1000) // 8 AM
+    const businessEnd = new Date(today.getTime() + 17 * 60 * 60 * 1000) // 5 PM
+    
+    // Only check if we're within business hours or future
+    if (now > businessEnd) return null
+    
+    const businessHoursSlots = timeSlots.filter(slot => {
+      const slotTime = slot.getTime()
+      return slotTime >= businessStart.getTime() && slotTime < businessEnd.getTime()
+    })
+    
+    if (businessHoursSlots.length === 0) return null
+    
+    const bookedSlots = businessHoursSlots.filter(slot => isTimeSlotBooked(computer, slot))
+    const bookedRatio = bookedSlots.length / businessHoursSlots.length
+    
+    if (bookedRatio === 1) return 'full'
+    if (bookedRatio > 0) return 'partial'
+    return 'available'
+  }
+
+
   const isTimeSlotSelected = (timeSlot) => {
     return selectedTimeSlots.includes(timeSlot.getTime())
   }
 
   const handleComputerSelect = (computer) => {
+    // Don't allow selection of maintenance or disabled computers
+    if (computer.status === 'maintenance' || computer.status === 'disabled') {
+      setMessage({ type: 'error', text: t('computers.cannotBookMaintenance') })
+      return
+    }
+    // Allow selection of in_use or booked computers for additional time slots
     setSelectedComputer(computer)
     setSelectedTimeSlots([])
   }
@@ -185,6 +225,13 @@ export default function Computers() {
       return
     }
 
+    // Check if selected computer is in maintenance or disabled
+    if (selectedComputer && (selectedComputer.status === 'maintenance' || selectedComputer.status === 'disabled')) {
+      setMessage({ type: 'error', text: t('computers.cannotBookMaintenance') })
+      return
+    }
+    // Allow booking on in_use or booked computers for additional time slots
+
     setMessage(null)
 
     try {
@@ -208,12 +255,23 @@ export default function Computers() {
       fetchBookings()
     } catch (error) {
       console.error('Booking error:', error.response?.data)
-      setMessage({ 
-        type: 'error', 
-        text: error.response?.data?.error || 'Đặt máy thất bại' 
-      })
+      const errorMessage = error.response?.data?.error || 'Đặt máy thất bại'
+      
+      // Handle booking limit exceeded error
+      if (errorMessage.includes('time slots')) {
+        setMessage({ 
+          type: 'error', 
+          text: t('computers.bookingLimitExceeded') || errorMessage
+        })
+      } else {
+        setMessage({ 
+          type: 'error', 
+          text: errorMessage
+        })
+      }
     }
   }
+
 
   if (loading) {
     return (
@@ -293,20 +351,30 @@ export default function Computers() {
                 <div
                   key={computer.id}
                   onClick={() => handleComputerSelect(computer)}
-                  className={`p-3 border-b border-gray-100 cursor-pointer transition-colors ${
-                    selectedComputer?.id === computer.id
-                      ? 'bg-primary-50 border-primary-200'
-                      : 'hover:bg-gray-50'
-                  } ${computer.status !== 'available' ? 'opacity-60' : ''}`}
+                  className={`p-3 border-b border-gray-100 transition-colors ${
+                    computer.status === 'maintenance' || computer.status === 'disabled'
+                      ? 'cursor-not-allowed opacity-50 bg-gray-100'
+                      : selectedComputer?.id === computer.id
+                      ? 'bg-primary-50 border-primary-200 cursor-pointer'
+                      : 'hover:bg-gray-50 cursor-pointer'
+                  }`}
                 >
                   <div className="flex items-center space-x-2">
                     <div className={`p-1.5 rounded-lg ${
                       computer.status === 'in_use' ? 'bg-red-100' : 
-                      computer.status === 'booked' ? 'bg-yellow-100' : 'bg-green-100'
+                      computer.status === 'booked' ? 'bg-yellow-100' : 
+                      computer.status === 'maintenance' ? 'bg-orange-100' :
+                      computer.status === 'disabled' ? 'bg-gray-100' :
+                      getBusinessHoursStatus(computer) === 'full' ? 'bg-purple-100' :
+                      getBusinessHoursStatus(computer) === 'partial' ? 'bg-blue-100' : 'bg-green-100'
                     }`}>
                       <Monitor className={`h-4 w-4 ${
                         computer.status === 'in_use' ? 'text-red-600' : 
-                        computer.status === 'booked' ? 'text-yellow-600' : 'text-green-600'
+                        computer.status === 'booked' ? 'text-yellow-600' : 
+                        computer.status === 'maintenance' ? 'text-orange-600' :
+                        computer.status === 'disabled' ? 'text-gray-600' :
+                        getBusinessHoursStatus(computer) === 'full' ? 'text-purple-600' :
+                        getBusinessHoursStatus(computer) === 'partial' ? 'text-blue-600' : 'text-green-600'
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -321,10 +389,18 @@ export default function Computers() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       computer.status === 'in_use' ? 'bg-red-100 text-red-700' :
                       computer.status === 'booked' ? 'bg-yellow-100 text-yellow-700' :
+                      computer.status === 'maintenance' ? 'bg-orange-100 text-orange-700' :
+                      computer.status === 'disabled' ? 'bg-gray-100 text-gray-700' :
+                      getBusinessHoursStatus(computer) === 'full' ? 'bg-purple-100 text-purple-700' :
+                      getBusinessHoursStatus(computer) === 'partial' ? 'bg-blue-100 text-blue-700' :
                       'bg-green-100 text-green-700'
                     }`}>
-                      {computer.status === 'in_use' ? 'Đang sử dụng' :
-                       computer.status === 'booked' ? 'Đã đặt' :
+                      {computer.status === 'in_use' ? t('computers.booked') :
+                       computer.status === 'booked' ? t('computers.booked') :
+                       computer.status === 'maintenance' ? t('computers.maintenance') :
+                       computer.status === 'disabled' ? t('computers.disabled') :
+                       getBusinessHoursStatus(computer) === 'full' ? t('computers.bookedFull') :
+                       getBusinessHoursStatus(computer) === 'partial' ? t('computers.partiallyAvailable') :
                        t('computers.available')}
                     </span>
                   </div>
@@ -429,6 +505,7 @@ export default function Computers() {
           <p className="text-gray-500">{t('computers.noMachines')}</p>
         </div>
       )}
+
     </div>
   )
 }

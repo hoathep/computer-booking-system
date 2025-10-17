@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Calendar, Monitor, Clock, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Calendar, Monitor, Clock, Trash2, CheckCircle, XCircle, AlertCircle, Star, Network } from 'lucide-react'
 import { useTranslation } from '../hooks/useTranslation'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -10,6 +10,9 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState(null)
+  const [showRatingModal, setShowRatingModal] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [rating, setRating] = useState(0)
 
   useEffect(() => {
     fetchBookings()
@@ -30,6 +33,40 @@ export default function MyBookings() {
       console.error('Failed to fetch bookings:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const canRateBooking = (booking) => {
+    if (booking.status !== 'completed') return false
+    
+    const bookingEndTime = new Date(booking.end_time)
+    const fiveDaysAgo = new Date()
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5)
+    
+    return bookingEndTime >= fiveDaysAgo
+  }
+
+  const handleRateBooking = (booking) => {
+    setSelectedBooking(booking)
+    setRating(booking.existing_rating || 0)
+    setShowRatingModal(true)
+  }
+
+  const handleRatingSubmit = async () => {
+    if (!rating || !selectedBooking) return
+    
+    try {
+      await axios.post(`/api/computers/${selectedBooking.computer_id}/rate`, { 
+        rating, 
+        bookingId: selectedBooking.id 
+      })
+      setMessage({ type: 'success', text: 'Đánh giá thành công!' })
+      setShowRatingModal(false)
+      setSelectedBooking(null)
+      setRating(0)
+      fetchBookings() // Refresh to show updated rating
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Đánh giá thất bại' })
     }
   }
 
@@ -59,7 +96,7 @@ export default function MyBookings() {
     }
     
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: t('bookings.pending'), icon: Clock },
+      pending: { bg: 'bg-blue-100', text: 'text-blue-700', label: t('bookings.booked'), icon: CheckCircle },
       active: { bg: 'bg-green-100', text: 'text-green-700', label: t('bookings.active'), icon: CheckCircle },
       completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: t('bookings.completed'), icon: CheckCircle },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: t('bookings.cancelled'), icon: XCircle }
@@ -86,9 +123,18 @@ export default function MyBookings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">{t('bookings.title')}</h1>
-        <p className="text-gray-600 mt-1">{t('bookings.subtitle')}</p>
+      {/* Header */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t('bookings.title')}</h1>
+            <p className="text-gray-600 mt-1">{t('bookings.subtitle')}</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-6 w-6 text-primary-600" />
+            <span className="text-sm text-gray-500">{bookings.length} {t('bookings.totalBookings')}</span>
+          </div>
+        </div>
       </div>
 
       {message && (
@@ -109,66 +155,138 @@ export default function MyBookings() {
       )}
 
       {bookings.length === 0 ? (
-        <div className="text-center py-12 card">
-          <Calendar className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">{t('bookings.noBookings')}</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Calendar className="h-10 w-10 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('bookings.noBookings')}</h3>
+          <p className="text-gray-500 mb-6">Bắt đầu đặt máy để quản lý lịch của bạn</p>
+          <button className="btn btn-primary">
+            <Monitor className="h-4 w-4 mr-2" />
+            {t('dashboard.bookNow')}
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-2">
           {bookings.map((booking) => (
-            <div key={booking.id} className="card hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start flex-1">
-                  <div className="p-3 bg-primary-100 rounded-lg">
-                    <Monitor className="h-6 w-6 text-primary-600" />
+            <div key={booking.id} className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200">
+              <div className="p-3">
+                <div className="flex items-center justify-between">
+                  {/* Left side - Computer info */}
+                  <div className="flex items-center space-x-3 flex-1">
+                    <div className="p-1.5 bg-primary-100 rounded-lg">
+                      <Monitor className="h-4 w-4 text-primary-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <h3 className="font-semibold text-gray-900 text-sm">{booking.computer_name}</h3>
+                          <p className="text-xs text-gray-500">{booking.location}</p>
+                        </div>
+                        
+                        {/* Time */}
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-3 w-3 text-gray-400" />
+                          <span className="text-xs text-gray-600">
+                            {format(new Date(booking.start_time), 'HH:mm', { locale: vi })} - {format(new Date(booking.end_time), 'HH:mm', { locale: vi })}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {format(new Date(booking.start_time), 'dd/MM', { locale: vi })}
+                          </span>
+                        </div>
+
+                        {/* IP Address */}
+                        <div className="flex items-center space-x-1">
+                          <Network className="h-3 w-3 text-blue-500" />
+                          <span className="font-mono text-xs text-gray-900">{booking.ip_address || 'N/A'}</span>
+                        </div>
+
+                        {/* Password */}
+                        {booking.unlock_code && (
+                          <div className="flex items-center space-x-1">
+                            <span className="text-xs text-gray-500">Pass:</span>
+                            <code className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded border">
+                              {booking.unlock_code}
+                            </code>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-4 flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-bold text-gray-900">{booking.computer_name}</h3>
-                      {getStatusBadge(booking.status, booking.start_time, booking.end_time)}
-                    </div>
+
+                  {/* Right side - Status and Actions */}
+                  <div className="flex items-center space-x-2">
+                    {getStatusBadge(booking.status, booking.start_time, booking.end_time)}
                     
-                    <p className="text-sm text-gray-600 mb-3">{booking.description}</p>
+                    {/* Cancel button */}
+                    {(booking.status === 'pending' || booking.status === 'active') && (
+                      <button
+                        onClick={() => handleCancelBooking(booking.id)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title={t('bookings.cancelBooking')}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500">{t('common.location')}:</p>
-                        <p className="font-medium text-gray-900">{booking.location}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">{t('bookings.startTime')}:</p>
-                        <p className="font-medium text-gray-900">
-                          {format(new Date(booking.start_time), 'HH:mm dd/MM/yyyy', { locale: vi })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">{t('bookings.endTime')}:</p>
-                        <p className="font-medium text-gray-900">
-                          {format(new Date(booking.end_time), 'HH:mm dd/MM/yyyy', { locale: vi })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">{t('bookings.createdAt')}:</p>
-                        <p className="font-medium text-gray-900">
-                          {format(new Date(booking.created_at), 'dd/MM/yyyy', { locale: vi })}
-                        </p>
-                      </div>
-                    </div>
+                    {/* Rate button */}
+                    {canRateBooking(booking) && (
+                      <button
+                        onClick={() => handleRateBooking(booking)}
+                        className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                        title={booking.existing_rating ? t('bookings.updateRating') : t('bookings.rateBooking')}
+                      >
+                        <Star className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                {(booking.status === 'pending' || booking.status === 'active') && (
-                  <button
-                    onClick={() => handleCancelBooking(booking.id)}
-                    className="btn btn-danger ml-4"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {t('bookings.cancelBooking')}
-                  </button>
-                )}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {selectedBooking.existing_rating ? t('bookings.updateRating') : t('bookings.rateBooking')} - {selectedBooking.computer_name}
+            </h3>
+            <div className="flex items-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className={`text-2xl ${
+                    star <= rating ? 'text-yellow-500' : 'text-gray-300'
+                  }`}
+                >
+                  <Star className="h-8 w-8" fill={star <= rating ? 'currentColor' : 'none'} />
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleRatingSubmit}
+                disabled={!rating}
+                className="btn btn-primary flex-1"
+              >
+                {selectedBooking.existing_rating ? t('bookings.updateRating') : t('bookings.submitRating')}
+              </button>
+              <button
+                onClick={() => {
+                  setShowRatingModal(false)
+                  setSelectedBooking(null)
+                  setRating(0)
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

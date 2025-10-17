@@ -1,6 +1,10 @@
-# 💻 Computer Booking System
+# 💻 Computer Booking System - Beta 0.2
 
 Hệ thống quản lý đặt máy tính trực tuyến với giao diện hiện đại, hỗ trợ đa người dùng, phân quyền admin, và tự động mở khóa máy khi đến giờ.
+
+**Phiên bản:** Beta 0.2  
+**Trạng thái:** Development & Testing  
+**Ngày cập nhật:** 2024-2025
 
 ## ✨ Tính năng
 
@@ -11,6 +15,10 @@ Hệ thống quản lý đặt máy tính trực tuyến với giao diện hiệ
 - ✅ Xem lịch sử và trạng thái booking
 - ✅ Hủy booking (trước khi bắt đầu)
 - ✅ Giới hạn số máy có thể đặt cùng lúc
+- ✅ Đánh giá máy tính sau khi sử dụng (1-5 sao)
+- ✅ Xem máy "hot" (được đặt nhiều nhất)
+- ✅ Nhận mật khẩu đăng nhập qua email
+- ✅ Hỗ trợ đa ngôn ngữ (Tiếng Việt, English, 日本語)
 
 ### 👨‍💼 Dành cho Admin
 - ✅ Quản lý người dùng (thêm, sửa, xóa)
@@ -19,6 +27,12 @@ Hệ thống quản lý đặt máy tính trực tuyến với giao diện hiệ
 - ✅ Quản lý nhóm người dùng và giới hạn booking
 - ✅ Dashboard thống kê tổng quan
 - ✅ Đặt giới hạn booking theo nhóm hoặc từng user
+- ✅ Báo cáo tổng hợp với biểu đồ thời gian
+- ✅ Xuất báo cáo ra file Excel
+- ✅ Quản lý cài đặt email SMTP
+- ✅ Quản lý cài đặt footer hệ thống
+- ✅ Import/Export danh sách nhóm
+- ✅ Quản lý đa ngôn ngữ
 
 ### 🖥️ Client App
 - ✅ Tự động kiểm tra booking từ server
@@ -50,6 +64,9 @@ computer-booking-system/
 - SQLite (better-sqlite3)
 - JWT Authentication
 - bcryptjs (Password hashing)
+- Nodemailer (Email sending)
+- ExcelJS (Excel export)
+- Multer (File upload)
 
 ### Frontend
 - React 18
@@ -58,6 +75,8 @@ computer-booking-system/
 - Axios
 - Lucide Icons
 - date-fns
+- i18next (Internationalization)
+- Chart.js (Data visualization)
 
 ### Client App
 - Node.js

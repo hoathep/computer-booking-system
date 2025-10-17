@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import Footer from './Footer'
 import { useAuth } from '../contexts/AuthContext'
 import { Monitor, Calendar, Home, LogOut, Settings, KeyRound, X } from 'lucide-react'
 import { useState } from 'react'
@@ -152,6 +153,7 @@ export default function Layout() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+      <Footer />
     </div>
   )
 }
