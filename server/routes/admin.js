@@ -5,13 +5,88 @@ import { authenticateToken, isAdmin } from '../middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
+import nodemailer from 'nodemailer';
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'), false);
+    }
+  }
+});
 
 // All admin routes require authentication and admin role
 router.use(authenticateToken, isAdmin);
 
 // --- USER MANAGEMENT ---
+// --- SMTP SETTINGS ---
+// Reuse settings table to store SMTP config as JSON under key 'smtpConfig'
+router.get('/settings', (req, res) => {
+  try {
+    db.prepare(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`).run();
+    const row = db.prepare(`SELECT value FROM settings WHERE key = 'maxAdvanceDays'`).get();
+    const smtpRow = db.prepare(`SELECT value FROM settings WHERE key = 'smtpConfig'`).get();
+    res.json({
+      maxAdvanceDays: row ? parseInt(row.value) : 7,
+      smtpConfig: smtpRow ? JSON.parse(smtpRow.value) : null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/settings/smtp', (req, res) => {
+  try {
+    const { host, port, secure, authUser, authPass, fromEmail } = req.body;
+    if (!host || !port || !authUser || !authPass || !fromEmail) {
+      return res.status(400).json({ error: 'SMTP host, port, user, pass, and fromEmail are required' });
+    }
+    const config = { host, port: Number(port), secure: !!secure, authUser, authPass, fromEmail };
+    db.prepare(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`).run();
+    db.prepare(`INSERT INTO settings (key, value) VALUES ('smtpConfig', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`).run(JSON.stringify(config));
+    res.json({ message: 'SMTP settings saved' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- FOOTER SETTINGS ---
+router.get('/settings/footer', (req, res) => {
+  try {
+    db.prepare(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`).run();
+    const row = db.prepare(`SELECT value FROM settings WHERE key = 'footerConfig'`).get();
+    const v = row ? JSON.parse(row.value) : {};
+    res.json({
+      supportEmail: v.supportEmail || '',
+      phone: v.phone || '',
+      teamsLink: v.teamsLink || ''
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/settings/footer', (req, res) => {
+  try {
+    const { supportEmail, phone, teamsLink } = req.body;
+    db.prepare(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`).run();
+    const config = { supportEmail: supportEmail || '', phone: phone || '', teamsLink: teamsLink || '' };
+    db.prepare(`INSERT INTO settings (key, value) VALUES ('footerConfig', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`).run(JSON.stringify(config));
+    res.json({ message: 'Footer settings saved' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Get all users
 router.get('/users', (req, res) => {
@@ -438,6 +513,108 @@ router.delete('/groups/:groupName', (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Export groups to CSV
+router.get('/groups/export', (req, res) => {
+  try {
+    const groups = db.prepare('SELECT * FROM group_limits ORDER BY group_name').all();
+    
+    // Create CSV content
+    const csvHeader = 'group_name,max_concurrent_bookings,no_show_minutes\n';
+    const csvRows = groups.map(group => 
+      `${group.group_name},${group.max_concurrent_bookings},${group.no_show_minutes || 15}`
+    ).join('\n');
+    
+    const csvContent = csvHeader + csvRows;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="groups_export.csv"');
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import groups from CSV
+router.post('/groups/import', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const file = req.file;
+    const csvContent = file.buffer.toString('utf8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'CSV file must have at least a header and one data row' });
+    }
+
+    // Skip header row
+    const dataLines = lines.slice(1);
+    let successCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (const line of dataLines) {
+      if (!line.trim()) continue;
+      
+      const [group_name, max_concurrent_bookings, no_show_minutes] = line.split(',').map(field => field.trim());
+      
+      if (!group_name || !max_concurrent_bookings) {
+        errors.push(`Invalid data: ${line}`);
+        errorCount++;
+        continue;
+      }
+
+      try {
+        const existing = db.prepare('SELECT * FROM group_limits WHERE group_name = ?').get(group_name);
+        
+        if (existing) {
+          // Update existing group
+          db.prepare(`
+            UPDATE group_limits 
+            SET max_concurrent_bookings = ?, no_show_minutes = COALESCE(?, no_show_minutes)
+            WHERE group_name = ?
+          `).run(parseInt(max_concurrent_bookings), parseInt(no_show_minutes) || 15, group_name);
+        } else {
+          // Create new group
+          db.prepare(`
+            INSERT INTO group_limits (group_name, max_concurrent_bookings, no_show_minutes)
+            VALUES (?, ?, COALESCE(?, 15))
+          `).run(group_name, parseInt(max_concurrent_bookings), parseInt(no_show_minutes) || 15);
+        }
+        successCount++;
+      } catch (error) {
+        errors.push(`Error processing ${group_name}: ${error.message}`);
+        errorCount++;
+      }
+    }
+
+    res.json({ 
+      message: `Import completed. ${successCount} groups processed successfully, ${errorCount} errors.`,
+      successCount,
+      errorCount,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Error handling middleware for multer
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+    }
+    return res.status(400).json({ error: error.message });
+  }
+  if (error.message === 'Only CSV files are allowed') {
+    return res.status(400).json({ error: 'Only CSV files are allowed' });
+  }
+  next(error);
 });
 
 // --- BOOKING MANAGEMENT ---
@@ -962,14 +1139,14 @@ router.get('/reports/usage-by-group', (req, res) => {
   }
 });
 
-// Time-series report: aggregate bookings over time by user or group
-// Query params: mode=user|group, bucket=day|week|month, from, to
+// Time-series report: aggregate bookings over time by user, group, or computer
+// Query params: mode=user|group|computer, bucket=day|week|month|year, from, to
 router.get('/reports/usage-timeseries', (req, res) => {
   try {
     const { mode = 'user', bucket = 'day', from, to } = req.query;
 
-    const validMode = mode === 'group' ? 'group' : 'user';
-    const validBucket = ['day', 'week', 'month'].includes(bucket) ? bucket : 'day';
+    const validMode = ['group', 'computer'].includes(mode) ? mode : 'user';
+    const validBucket = ['day', 'week', 'month', 'year'].includes(bucket) ? bucket : 'day';
 
     let timeFilter = '';
     const params = [];
@@ -983,18 +1160,29 @@ router.get('/reports/usage-timeseries', (req, res) => {
     }
 
     // SQLite date truncation
-    const bucketExpr = validBucket === 'day'
-      ? "date(b.start_time)"
-      : validBucket === 'week'
-      ? "strftime('%Y-%W', b.start_time)" // year-week
-      : "strftime('%Y-%m', b.start_time)"; // month
+    const bucketExpr =
+      validBucket === 'day'
+        ? "date(b.start_time)"
+        : validBucket === 'week'
+        ? "strftime('%Y-%W', b.start_time)" // year-week
+        : validBucket === 'month'
+        ? "strftime('%Y-%m', b.start_time)" // month
+        : "strftime('%Y', b.start_time)"; // year
 
-    const labelSelect = validMode === 'group' ? 'u.group_name as label' : 'u.username as label';
+    const labelSelect =
+      validMode === 'group'
+        ? 'u.group_name as label'
+        : validMode === 'computer'
+        ? 'c.name as label'
+        : 'u.username as label';
+
+    const joinComputer = validMode === 'computer' ? 'JOIN computers c ON c.id = b.computer_id' : '';
 
     const rows = db.prepare(`
       SELECT ${bucketExpr} as bucket, ${labelSelect}, COUNT(b.id) as bookings
       FROM bookings b
       JOIN users u ON u.id = b.user_id
+      ${joinComputer}
       WHERE 1=1 ${timeFilter}
       GROUP BY bucket, label
       ORDER BY bucket ASC
@@ -1021,6 +1209,154 @@ router.get('/reports/usage-timeseries', (req, res) => {
       buckets,
       series
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export timeseries report to Excel
+// Accepts same query params as usage-timeseries
+router.get('/reports/export-timeseries', async (req, res) => {
+  try {
+    const { mode = 'user', bucket = 'day', from, to } = req.query;
+
+    const validMode = ['group', 'computer'].includes(mode) ? mode : 'user';
+    const validBucket = ['day', 'week', 'month', 'year'].includes(bucket) ? bucket : 'day';
+
+    let timeFilter = '';
+    const params = [];
+    if (from) { timeFilter += ' AND b.start_time >= ?'; params.push(from); }
+    if (to) { timeFilter += ' AND b.end_time <= ?'; params.push(to); }
+
+    const bucketExpr =
+      validBucket === 'day'
+        ? "date(b.start_time)"
+        : validBucket === 'week'
+        ? "strftime('%Y-%W', b.start_time)"
+        : validBucket === 'month'
+        ? "strftime('%Y-%m', b.start_time)"
+        : "strftime('%Y', b.start_time)";
+
+    const labelSelect =
+      validMode === 'group'
+        ? 'u.group_name as label'
+        : validMode === 'computer'
+        ? 'c.name as label'
+        : 'u.username as label';
+    const joinComputer = validMode === 'computer' ? 'JOIN computers c ON c.id = b.computer_id' : '';
+
+    const rows = db.prepare(`
+      SELECT ${bucketExpr} as bucket, ${labelSelect}, COUNT(b.id) as bookings
+      FROM bookings b
+      JOIN users u ON u.id = b.user_id
+      ${joinComputer}
+      WHERE 1=1 ${timeFilter}
+      GROUP BY bucket, label
+      ORDER BY bucket ASC
+    `).all(...params);
+
+    const bucketSet = new Set(rows.map(r => r.bucket));
+    const buckets = Array.from(bucketSet).sort();
+    const seriesMap = new Map();
+    for (const r of rows) {
+      if (!seriesMap.has(r.label)) seriesMap.set(r.label, new Map());
+      seriesMap.get(r.label).set(r.bucket, r.bookings);
+    }
+    const labels = Array.from(seriesMap.keys());
+
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Timeseries');
+
+    // Header row
+    ws.addRow(['Bucket', ...labels]);
+    // Data rows
+    for (const b of buckets) {
+      const row = [b, ...labels.map(l => seriesMap.get(l).get(b) || 0)];
+      ws.addRow(row);
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="report_${validMode}_${validBucket}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export summary reports to Excel (user or group mode)
+router.get('/reports/export-summary', async (req, res) => {
+  try {
+    const { mode = 'user', from, to } = req.query;
+    const validMode = mode === 'group' ? 'group' : 'user';
+
+    let timeFilter = '';
+    const params = [];
+    if (from) { timeFilter += ' AND b.start_time >= ?'; params.push(from); }
+    if (to) { timeFilter += ' AND b.end_time <= ?'; params.push(to); }
+
+    let query, headers;
+    if (validMode === 'group') {
+      query = `
+        SELECT 
+          u.group_name as groupName,
+          COUNT(b.id) as bookings,
+          ROUND(SUM((julianday(b.end_time) - julianday(b.start_time)) * 24), 2) as bookedHours,
+          ROUND(SUM(CASE WHEN b.status = 'completed' THEN (julianday(b.end_time) - julianday(b.start_time)) * 24 ELSE 0 END), 2) as usedHours,
+          ROUND(SUM(CASE WHEN b.status = 'cancelled' THEN (julianday(b.end_time) - julianday(b.start_time)) * 24 ELSE 0 END), 2) as noShowHours
+        FROM bookings b
+        JOIN users u ON u.id = b.user_id
+        WHERE 1=1 ${timeFilter}
+        GROUP BY u.group_name
+        ORDER BY bookings DESC
+      `;
+      headers = ['Group', 'Bookings', 'Booked Hours', 'Used Hours', "Don't use time"];
+    } else {
+      query = `
+        SELECT 
+          u.username,
+          u.fullname,
+          COUNT(b.id) as bookings,
+          ROUND(SUM((julianday(b.end_time) - julianday(b.start_time)) * 24), 2) as bookedHours,
+          ROUND(SUM(CASE WHEN b.status = 'completed' THEN (julianday(b.end_time) - julianday(b.start_time)) * 24 ELSE 0 END), 2) as usedHours,
+          ROUND(SUM(CASE WHEN b.status = 'cancelled' THEN (julianday(b.end_time) - julianday(b.start_time)) * 24 ELSE 0 END), 2) as noShowHours
+        FROM bookings b
+        JOIN users u ON u.id = b.user_id
+        WHERE 1=1 ${timeFilter}
+        GROUP BY u.id, u.username, u.fullname
+        ORDER BY bookings DESC
+      `;
+      headers = ['Username', 'Full Name', 'Bookings', 'Booked Hours', 'Used Hours', "Don't use time"];
+    }
+
+    const rows = db.prepare(query).all(...params);
+
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Summary Report');
+
+    // Add headers
+    ws.addRow(headers);
+    
+    // Add data rows
+    for (const row of rows) {
+      const values = Object.values(row);
+      ws.addRow(values);
+    }
+
+    // Style headers
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE5E7EB' }
+    };
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="summary_report_${validMode}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

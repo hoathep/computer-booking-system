@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database/init.js';
 import { authenticateToken } from '../middleware/auth.js';
+import nodemailer from 'nodemailer';
 
 const router = express.Router();
 
@@ -46,9 +47,14 @@ router.get('/my-bookings', authenticateToken, (req, res) => {
         b.*,
         c.name as computer_name,
         c.location,
-        c.description
+        c.description,
+        c.ip_address,
+        br.rating as existing_rating,
+        s.unlock_code
       FROM bookings b
       JOIN computers c ON b.computer_id = c.id
+      LEFT JOIN booking_ratings br ON b.id = br.booking_id
+      LEFT JOIN sessions s ON b.id = s.booking_id
       WHERE b.user_id = ?
       ORDER BY b.start_time DESC
     `).all(req.user.id);
@@ -66,7 +72,8 @@ router.get('/active', authenticateToken, (req, res) => {
       SELECT 
         b.*,
         c.name as computer_name,
-        c.location
+        c.location,
+        c.ip_address
       FROM bookings b
       JOIN computers c ON b.computer_id = c.id
       WHERE b.user_id = ?
@@ -123,7 +130,7 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Computer not found' });
     }
 
-    // Check for conflicting bookings on this computer
+    // Check for conflicting bookings on this computer for the same time slot
     const conflict = db.prepare(`
       SELECT * FROM bookings
       WHERE computer_id = ?
@@ -157,21 +164,30 @@ router.post('/', authenticateToken, (req, res) => {
       maxBookings = groupLimit ? groupLimit.max_concurrent_bookings : 1;
     }
 
-    // Check current concurrent bookings for this user
+    // Calculate total time slots for this booking (in 30-minute blocks)
+    const bookingDuration = (new Date(end_time) - new Date(start_time)) / (30 * 60 * 1000); // Convert to 30-min slots
+    const totalSlots = Math.ceil(bookingDuration);
+
+    // Get all current bookings for this user
     const currentBookings = db.prepare(`
-      SELECT COUNT(*) as count FROM bookings
+      SELECT start_time, end_time
+      FROM bookings
       WHERE user_id = ?
       AND status IN ('pending', 'active')
-      AND (
-        (start_time <= ? AND end_time > ?)
-        OR (start_time < ? AND end_time >= ?)
-        OR (start_time >= ? AND end_time <= ?)
-      )
-    `).get(user_id, start_time, start_time, end_time, end_time, start_time, end_time);
+    `).all(user_id);
 
-    if (currentBookings.count >= maxBookings) {
+    // Calculate total slots from current bookings
+    let currentTotalSlots = 0;
+    for (const booking of currentBookings) {
+      const duration = (new Date(booking.end_time) - new Date(booking.start_time)) / (30 * 60 * 1000);
+      currentTotalSlots += Math.ceil(duration);
+    }
+
+    const maxSlots = maxBookings * 2; // Convert max computers to max slots (assuming 1 computer = 2 slots per hour)
+
+    if (currentTotalSlots + totalSlots > maxSlots) {
       return res.status(403).json({ 
-        error: `You can only book ${maxBookings} computer(s) at the same time. You currently have ${currentBookings.count} active booking(s) for this time slot.` 
+        error: `You can only book ${maxBookings} computer(s) worth of time slots. You currently have ${currentTotalSlots} slot(s) booked and trying to book ${totalSlots} more slot(s).` 
       });
     }
 
@@ -187,6 +203,31 @@ router.post('/', authenticateToken, (req, res) => {
       INSERT INTO sessions (booking_id, unlock_code, status)
       VALUES (?, ?, 'locked')
     `).run(result.lastInsertRowid, unlockCode);
+
+  // Attempt to send email with unlock code if SMTP is configured and user has email
+  try {
+    const user = db.prepare('SELECT email, username, fullname FROM users WHERE id = ?').get(user_id);
+    const settingsRow = db.prepare(`SELECT value FROM settings WHERE key = 'smtpConfig'`).get();
+    if (user?.email && settingsRow?.value) {
+      const cfg = JSON.parse(settingsRow.value);
+      const transporter = nodemailer.createTransport({
+        host: cfg.host,
+        port: cfg.port,
+        secure: cfg.secure,
+        auth: { user: cfg.authUser, pass: cfg.authPass }
+      });
+      const mailOptions = {
+        from: cfg.fromEmail,
+        to: user.email,
+        subject: 'Your booking unlock code',
+        text: `Hello ${user.fullname || user.username},\n\nYour unlock code for the booking is: ${unlockCode}.\nStart: ${start_time}\nEnd: ${end_time}\n\nThank you.`,
+      };
+      // Fire and forget; don't block response if sending fails
+      transporter.sendMail(mailOptions).catch(() => {});
+    }
+  } catch (e) {
+    // ignore email errors
+  }
 
     res.status(201).json({
       message: 'Booking created successfully',

@@ -42,6 +42,14 @@ export function initDatabase() {
     if (!hasSoftware) {
       db.prepare(`ALTER TABLE computers ADD COLUMN recommended_software TEXT`).run();
     }
+    const hasRating = compCols.some(c => c.name === 'rating');
+    if (!hasRating) {
+      db.prepare(`ALTER TABLE computers ADD COLUMN rating REAL DEFAULT 0`).run();
+    }
+    const hasRatingCount = compCols.some(c => c.name === 'rating_count');
+    if (!hasRatingCount) {
+      db.prepare(`ALTER TABLE computers ADD COLUMN rating_count INTEGER DEFAULT 0`).run();
+    }
   } catch (e) {
     // ignore
   }
@@ -71,6 +79,8 @@ export function initDatabase() {
       preferred_group TEXT,
       memory_gb INTEGER,
       recommended_software TEXT,
+      rating REAL DEFAULT 0,
+      rating_count INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -102,6 +112,20 @@ export function initDatabase() {
       locked_at DATETIME,
       status TEXT DEFAULT 'locked',
       FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_ratings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      booking_id INTEGER NOT NULL,
+      computer_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      rating INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (booking_id) REFERENCES bookings(id),
+      FOREIGN KEY (computer_id) REFERENCES computers(id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      UNIQUE(booking_id)
     );
   `);
 
