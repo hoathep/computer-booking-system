@@ -82,6 +82,9 @@
     "activeBookings": "使用中",
     "booked": "予約済み",
     "totalBookings": "総予約数",
+    "availableComputers": "利用可能なコンピューター総数",
+    "todayBookedHours": "今日の予約時間",
+    "monthUsedHours": "今月の使用時間",
     "maxConcurrent": "最大同時利用",
     "currentBookings": "現在の予約",
     "noActiveBookings": "アクティブな予約がありません",
@@ -336,5 +339,21 @@
     "notFound": "見つかりません",
     "validationError": "データ検証エラー",
     "unknownError": "不明なエラー"
+  },
+  "ai": {
+    "title": "AIアシスタント",
+    "subtitle": "Computer Booking Systemについて質問してください",
+    "welcome": "こんにちは！Computer Booking System専門のAIアシスタントです。以下のことができます：\n\n• システム使用ガイド\n• 機能の説明\n• トラブルシューティングサポート\n• インストールに関する質問\n\n何かご質問はありますか？",
+    "placeholder": "質問を入力してください...",
+    "thinking": "考え中...",
+    "error": "申し訳ございません。エラーが発生しました。後でもう一度お試しください。",
+    "suggestedQuestions": "おすすめの質問",
+    "suggestions": {
+      "howToBook": "コンピューターの予約方法は？",
+      "howToCancel": "予約のキャンセル方法は？",
+      "adminFeatures": "管理者機能には何がありますか？",
+      "installation": "インストールガイド",
+      "troubleshooting": "トラブルシューティング"
+    }
   }
 }

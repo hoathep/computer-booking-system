@@ -82,6 +82,9 @@
     "activeBookings": "Đang sử dụng",
     "booked": "Đã được book",
     "totalBookings": "Tổng đặt máy",
+    "availableComputers": "Tổng số máy đang rảnh",
+    "todayBookedHours": "Giờ đăng ký hôm nay",
+    "monthUsedHours": "Đã sử dụng tháng này",
     "maxConcurrent": "Giới hạn đồng thời",
     "currentBookings": "Lịch đang đặt",
     "noActiveBookings": "Bạn chưa có lịch đặt máy nào",
@@ -353,5 +356,21 @@
     "notFound": "Không tìm thấy",
     "validationError": "Lỗi xác thực dữ liệu",
     "unknownError": "Lỗi không xác định"
+  },
+  "ai": {
+    "title": "Trợ lý AI",
+    "subtitle": "Hỏi tôi về Computer Booking System",
+    "welcome": "Xin chào! Tôi là trợ lý AI chuyên về Computer Booking System. Tôi có thể giúp bạn:\n\n• Hướng dẫn sử dụng hệ thống\n• Giải thích các tính năng\n• Hỗ trợ khắc phục sự cố\n• Trả lời câu hỏi về cài đặt\n\nBạn có câu hỏi gì không?",
+    "placeholder": "Nhập câu hỏi của bạn...",
+    "thinking": "Đang suy nghĩ...",
+    "error": "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.",
+    "suggestedQuestions": "Câu hỏi gợi ý",
+    "suggestions": {
+      "howToBook": "Làm thế nào để đặt máy?",
+      "howToCancel": "Cách hủy booking?",
+      "adminFeatures": "Tính năng admin có gì?",
+      "installation": "Hướng dẫn cài đặt",
+      "troubleshooting": "Khắc phục sự cố"
+    }
   }
 }

@@ -12,7 +12,11 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const [stats, setStats] = useState({
     activeBookings: [],
-    totalBookings: 0
+    totalBookings: 0,
+    totalComputers: 0,
+    availableComputers: 0,
+    todayBookedHours: 0,
+    monthUsedHours: 0
   })
   const [hotComputers, setHotComputers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,15 +29,21 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [activeRes, allRes, hotRes] = await Promise.all([
+      const [activeRes, allRes, hotRes, availabilityRes, timeStatsRes] = await Promise.all([
         axios.get('/api/bookings/active'),
         axios.get('/api/bookings/my-bookings'),
-        axios.get('/api/computers/hot')
+        axios.get('/api/computers/hot'),
+        axios.get('/api/computers/availability-stats'),
+        axios.get('/api/bookings/user-time-stats')
       ])
 
       setStats({
         activeBookings: activeRes.data,
-        totalBookings: allRes.data.length
+        totalBookings: allRes.data.length,
+        totalComputers: availabilityRes.data.totalComputers,
+        availableComputers: availabilityRes.data.availableComputers,
+        todayBookedHours: timeStatsRes.data.todayBookedHours,
+        monthUsedHours: timeStatsRes.data.monthUsedHours
       })
       setHotComputers(hotRes.data)
     } catch (error) {
@@ -94,8 +104,8 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">{t('dashboard.totalBookings')}</p>
-              <p className="text-3xl font-bold text-green-600">{stats.totalBookings}</p>
+              <p className="text-sm text-gray-600">{t('dashboard.availableComputers') || 'Tổng số máy đang rảnh'}</p>
+              <p className="text-3xl font-bold text-green-600">{stats.availableComputers}/{stats.totalComputers}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
               <TrendingUp className="h-8 w-8 text-green-600" />
@@ -106,11 +116,14 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">{t('dashboard.maxConcurrent')}</p>
-              <p className="text-3xl font-bold text-orange-600">{user?.max_concurrent_bookings || 1}</p>
+              <p className="text-sm text-gray-600">{t('dashboard.todayBookedHours') || 'Giờ đăng ký hôm nay'}</p>
+              <p className="text-3xl font-bold text-orange-600">{stats.todayBookedHours}h</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {t('dashboard.monthUsedHours') || 'Đã sử dụng tháng này'}: {stats.monthUsedHours}h
+              </p>
             </div>
             <div className="p-3 bg-orange-100 rounded-lg">
-              <Calendar className="h-8 w-8 text-orange-600" />
+              <Clock className="h-8 w-8 text-orange-600" />
             </div>
           </div>
         </div>

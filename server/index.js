@@ -6,6 +6,7 @@ import computerRoutes from './routes/computers.js';
 import bookingRoutes from './routes/bookings.js';
 import adminRoutes from './routes/admin.js';
 import clientRoutes from './routes/client.js';
+import aiRoutes from './routes/ai.js';
 import { initDatabase } from './database/init.js';
 import schedule from 'node-schedule';
 
@@ -27,6 +28,7 @@ app.use('/api/computers', computerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/client', clientRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

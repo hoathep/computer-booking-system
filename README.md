@@ -19,6 +19,7 @@ Hệ thống quản lý đặt máy tính trực tuyến với giao diện hiệ
 - ✅ Xem máy "hot" (được đặt nhiều nhất)
 - ✅ Nhận mật khẩu đăng nhập qua email
 - ✅ Hỗ trợ đa ngôn ngữ (Tiếng Việt, English, 日本語)
+- ✅ **Trợ lý AI** - Hỏi đáp về hệ thống 24/7
 
 ### 👨‍💼 Dành cho Admin
 - ✅ Quản lý người dùng (thêm, sửa, xóa)
@@ -39,6 +40,15 @@ Hệ thống quản lý đặt máy tính trực tuyến với giao diện hiệ
 - ✅ Mở khóa máy khi đến giờ đặt
 - ✅ Khóa máy khi hết thời gian
 - ✅ Hiển thị thông tin booking real-time
+
+### 🤖 AI Assistant
+- ✅ Trợ lý AI chuyên về Computer Booking System
+- ✅ Hướng dẫn sử dụng hệ thống
+- ✅ Giải thích các tính năng
+- ✅ Hỗ trợ khắc phục sự cố
+- ✅ Tích hợp OpenAI API (tùy chọn)
+- ✅ Giao diện chat hiện đại
+- ✅ Đa ngôn ngữ (Vi/En/Ja)
 
 ## 🏗️ Kiến trúc
 
@@ -117,6 +127,9 @@ Backend tự động sử dụng file `.env` (có sẵn), bạn có thể thay �
 PORT=3000
 JWT_SECRET=your_jwt_secret_key_change_this_in_production
 NODE_ENV=development
+
+# OpenAI API Configuration (Optional - for AI Assistant)
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 Client App cần tạo file `.env`:

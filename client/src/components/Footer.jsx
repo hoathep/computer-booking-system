@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import Logo from './Logo'
 
 export default function Footer() {
   const [cfg, setCfg] = useState({ supportEmail: '', phone: '', teamsLink: '' })
@@ -16,21 +17,37 @@ export default function Footer() {
 
   return (
     <footer className="mt-10 border-t bg-gradient-to-r from-gray-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-        <div className="text-sm text-gray-600 text-center md:text-left whitespace-nowrap">
-          Computer Booking System © Design Center DENSO Viet Nam - 2025
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Main content - 3 column layout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start mb-2">
+          {/* Left column - Logo only, aligned to right */}
+          <div className="flex justify-end">
+            <Logo className="h-12 w-12" />
+          </div>
+          
+          {/* Center column - Title and contact info */}
+          <div className="text-center md:text-left">
+            <div className="text-lg font-bold text-gray-800 mb-2">Computer Booking System</div>
+            <div className="text-sm text-gray-600">
+              {cfg.supportEmail && (
+                <a href={`mailto:${cfg.supportEmail}`} className="text-primary-700 hover:text-primary-900">{cfg.supportEmail}</a>
+              )}
+              {cfg.supportEmail && (cfg.phone || cfg.teamsLink) && <span className="mx-2">•</span>}
+              {cfg.phone && <span>{cfg.phone}</span>}
+            </div>
+          </div>
+          
+          {/* Right column - Teams link */}
+          <div className="text-center md:text-right">
+            {cfg.teamsLink && (
+              <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">Chat with us on Teams</a>
+            )}
+          </div>
         </div>
-        <div className="text-sm text-gray-600 text-center">
-          {cfg.supportEmail && (
-            <a href={`mailto:${cfg.supportEmail}`} className="text-primary-700 hover:text-primary-900">{cfg.supportEmail}</a>
-          )}
-          {cfg.supportEmail && (cfg.phone || cfg.teamsLink) && <span className="mx-2">•</span>}
-          {cfg.phone && <span>{cfg.phone}</span>}
-        </div>
-        <div className="text-sm text-center md:text-right">
-          {cfg.teamsLink && (
-            <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">Chat with us on Teams</a>
-          )}
+        
+        {/* Copyright line - centered at bottom */}
+        <div className="text-sm text-gray-500 text-center pt-2">
+        DENSO Viet Nam Design Center © 2025 - All rights reserved
         </div>
       </div>
     </footer>

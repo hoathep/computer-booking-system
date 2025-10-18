@@ -6,6 +6,8 @@ import { useState } from 'react'
 import axios from 'axios'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useTranslation } from '../hooks/useTranslation'
+import AnimatedAIAssistant from './AnimatedAIAssistant'
+import Logo from './Logo'
 
 export default function Layout() {
   const { user, logout, isAdmin } = useAuth()
@@ -154,6 +156,9 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      
+      {/* Animated AI Assistant */}
+      <AnimatedAIAssistant />
     </div>
   )
 }

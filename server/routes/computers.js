@@ -4,12 +4,43 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Get computer availability stats
+router.get('/availability-stats', authenticateToken, (req, res) => {
+  try {
+    // Count total computers (excluding maintenance and disabled)
+    const totalComputers = db.prepare(`
+      SELECT COUNT(*) as count FROM computers 
+      WHERE status NOT IN ('maintenance', 'disabled')
+    `).get();
+    
+    // Count available computers (not in use, not booked, not maintenance/disabled)
+    const availableComputers = db.prepare(`
+      SELECT COUNT(*) as count FROM computers c
+      WHERE c.status NOT IN ('maintenance', 'disabled')
+      AND NOT EXISTS (
+        SELECT 1 FROM bookings b 
+        WHERE b.computer_id = c.id 
+        AND b.status IN ('booked', 'active')
+        AND datetime('now') < b.end_time
+      )
+    `).get();
+
+    res.json({
+      totalComputers: totalComputers.count,
+      availableComputers: availableComputers.count
+    });
+  } catch (error) {
+    console.error('Availability stats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get hot computers (most booked) - MUST be before /:id route
 router.get('/hot', authenticateToken, (req, res) => {
   try {
     const computers = db.prepare(`
       SELECT c.*, 
-             COUNT(b.id) as booking_count,
+             COUNT(CASE WHEN b.status = 'completed' THEN b.id END) as booking_count,
              COALESCE(c.rating, 0) as rating,
              COALESCE(c.rating_count, 0) as rating_count,
              (

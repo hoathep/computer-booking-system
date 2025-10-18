@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages, BarChart, Settings } from 'lucide-react'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useTranslation } from '../hooks/useTranslation'
+import AdminAIAssistant from './AdminAIAssistant'
+import Logo from './Logo'
 
 export default function AdminLayout() {
   const { logout } = useAuth()
@@ -133,6 +135,9 @@ export default function AdminLayout() {
         <Outlet />
       </main>
       <Footer />
+      
+      {/* Admin AI Assistant */}
+      <AdminAIAssistant />
     </div>
   )
 }

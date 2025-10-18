@@ -40,6 +40,48 @@ router.get('/', authenticateToken, (req, res) => {
   }
 });
 
+// Get user's time statistics
+router.get('/user-time-stats', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get today's booked hours
+    const todayBookedHours = db.prepare(`
+      SELECT COALESCE(SUM(
+        (julianday(end_time) - julianday(start_time)) * 24
+      ), 0) as hours
+      FROM bookings 
+      WHERE user_id = ? 
+      AND date(start_time) = date('now')
+      AND status IN ('booked', 'active', 'completed')
+    `).get(userId);
+    
+    // Get this month's used hours (completed bookings only)
+    const monthUsedHours = db.prepare(`
+      SELECT COALESCE(SUM(
+        CASE 
+          WHEN s.unlocked_at IS NOT NULL AND s.locked_at IS NOT NULL THEN
+            (julianday(s.locked_at) - julianday(s.unlocked_at)) * 24
+          ELSE 0
+        END
+      ), 0) as hours
+      FROM bookings b
+      LEFT JOIN sessions s ON s.booking_id = b.id
+      WHERE b.user_id = ? 
+      AND strftime('%Y-%m', b.start_time) = strftime('%Y-%m', 'now')
+      AND b.status = 'completed'
+    `).get(userId);
+
+    res.json({
+      todayBookedHours: Math.round(todayBookedHours.hours * 10) / 10,
+      monthUsedHours: Math.round(monthUsedHours.hours * 10) / 10
+    });
+  } catch (error) {
+    console.error('User time stats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user's bookings
 router.get('/my-bookings', authenticateToken, (req, res) => {
   try {

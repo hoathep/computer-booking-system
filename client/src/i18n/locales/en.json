@@ -82,6 +82,9 @@
     "activeBookings": "Active",
     "booked": "Booked",
     "totalBookings": "Total Bookings",
+    "availableComputers": "Total Available Computers",
+    "todayBookedHours": "Today's Booked Hours",
+    "monthUsedHours": "Used This Month",
     "maxConcurrent": "Max Concurrent",
     "currentBookings": "Current Bookings",
     "noActiveBookings": "You have no active bookings",
@@ -336,5 +339,21 @@
     "notFound": "Not found",
     "validationError": "Data validation error",
     "unknownError": "Unknown error"
+  },
+  "ai": {
+    "title": "AI Assistant",
+    "subtitle": "Ask me about Computer Booking System",
+    "welcome": "Hello! I'm an AI assistant specialized in Computer Booking System. I can help you with:\n\n• System usage guide\n• Feature explanations\n• Troubleshooting support\n• Installation questions\n\nWhat would you like to know?",
+    "placeholder": "Type your question...",
+    "thinking": "Thinking...",
+    "error": "Sorry, an error occurred. Please try again later.",
+    "suggestedQuestions": "Suggested questions",
+    "suggestions": {
+      "howToBook": "How to book a computer?",
+      "howToCancel": "How to cancel booking?",
+      "adminFeatures": "What admin features are available?",
+      "installation": "Installation guide",
+      "troubleshooting": "Troubleshooting"
+    }
   }
 }
