@@ -90,7 +90,7 @@ export function initDatabase() {
       computer_id INTEGER NOT NULL,
       start_time DATETIME NOT NULL,
       end_time DATETIME NOT NULL,
-      status TEXT DEFAULT 'pending',
+      status TEXT DEFAULT 'booked',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id),
       FOREIGN KEY (computer_id) REFERENCES computers(id)

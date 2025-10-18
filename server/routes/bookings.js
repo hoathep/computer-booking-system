@@ -78,8 +78,9 @@ router.get('/active', authenticateToken, (req, res) => {
       FROM bookings b
       JOIN computers c ON b.computer_id = c.id
       WHERE b.user_id = ?
-      AND b.status IN ('pending', 'active')
+      AND b.status IN ('booked', 'active')
       AND datetime('now') < b.end_time
+      ORDER BY b.start_time ASC
     `).all(req.user.id);
 
     res.json(activeBookings);
@@ -135,7 +136,7 @@ router.post('/', authenticateToken, (req, res) => {
     const conflict = db.prepare(`
       SELECT * FROM bookings
       WHERE computer_id = ?
-      AND status IN ('pending', 'active')
+      AND status IN ('booked', 'active')
       AND (
         (start_time <= ? AND end_time > ?)
         OR (start_time < ? AND end_time >= ?)
@@ -174,7 +175,7 @@ router.post('/', authenticateToken, (req, res) => {
       SELECT start_time, end_time
       FROM bookings
       WHERE user_id = ?
-      AND status IN ('pending', 'active')
+      AND status IN ('booked', 'active')
     `).all(user_id);
 
     // Calculate total slots from current bookings
@@ -195,7 +196,7 @@ router.post('/', authenticateToken, (req, res) => {
     // Create booking
     const result = db.prepare(`
       INSERT INTO bookings (user_id, computer_id, start_time, end_time, status)
-      VALUES (?, ?, ?, ?, 'pending')
+      VALUES (?, ?, ?, ?, 'booked')
     `).run(user_id, computer_id, start_time, end_time);
 
     // Create session with unlock code

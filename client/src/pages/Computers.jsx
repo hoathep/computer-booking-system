@@ -19,6 +19,8 @@ export default function Computers() {
   const [selectionStart, setSelectionStart] = useState(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [message, setMessage] = useState(null)
+  const [tooltip, setTooltip] = useState({ show: false, content: null, x: 0, y: 0 })
+  const [tooltipTimeout, setTooltipTimeout] = useState(null)
 
   useEffect(() => {
     fetchComputers()
@@ -33,8 +35,14 @@ export default function Computers() {
       cleanupExpiredBookings()
     }, 30000)
     
-    return () => clearInterval(interval)
-  }, [selectedDate])
+    return () => {
+      clearInterval(interval)
+      // Cleanup tooltip timeout
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout)
+      }
+    }
+  }, [selectedDate, tooltipTimeout])
 
   // Auto cleanup expired bookings
   const cleanupExpiredBookings = async () => {
@@ -129,12 +137,21 @@ export default function Computers() {
     return bookings.some(booking => {
       if (booking.computer_id !== computer.id) return false
       // Ignore cancelled or completed bookings for clickability
-      if (booking.status && !['pending', 'active'].includes(booking.status)) return false
+      if (booking.status && !['booked', 'active'].includes(booking.status)) return false
       const start = new Date(booking.start_time).getTime()
       const end = new Date(booking.end_time).getTime()
-      // Treat interval as [start, end) so the slot exactly at end is free
-      return t >= start && t < end
+      // Include the slot that ends at the booking end time
+      // This ensures the last 30-minute slot is properly marked as booked
+      return t >= start && t <= end
     })
+  }
+
+  // Disable the last time slot (23:30-00:00) to avoid booking conflicts
+  const isLastTimeSlot = (timeSlot) => {
+    const slotTime = timeSlot.getTime()
+    const endOfDay = new Date(selectedDate)
+    endOfDay.setHours(23, 30, 0, 0)
+    return slotTime === endOfDay.getTime()
   }
 
   // Calculate business hours availability status
@@ -168,6 +185,9 @@ export default function Computers() {
   }
 
   const handleComputerSelect = (computer) => {
+    // Clear any previous messages first
+    setMessage(null)
+    
     // Don't allow selection of maintenance or disabled computers
     if (computer.status === 'maintenance' || computer.status === 'disabled') {
       setMessage({ type: 'error', text: t('computers.cannotBookMaintenance') })
@@ -219,9 +239,26 @@ export default function Computers() {
     setSelectionStart(null)
   }
 
+  const handleMouseEnter = (computer, event) => {
+    // Clear any existing timeout to prevent tooltip from hiding
+    if (tooltipTimeout) {
+      clearTimeout(tooltipTimeout)
+      setTooltipTimeout(null)
+    }
+    
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTooltip({
+      show: true,
+      content: computer,
+      x: rect.right + 10, // Completely to the right of the button
+      y: rect.top // Align with top of the button
+    })
+  }
+
+
   const handleBookingSubmit = async () => {
     if (selectedTimeSlots.length === 0) {
-      setMessage({ type: 'error', text: 'Vui lòng chọn thời gian!' })
+      setMessage({ type: 'error', text: t('computers.pleaseSelectTime') })
       return
     }
 
@@ -246,22 +283,38 @@ export default function Computers() {
 
       setMessage({ 
         type: 'success', 
-        text: `Đặt máy thành công! Mã mở khóa: ${response.data.unlockCode}` 
+        text: t('computers.bookingSuccessMessage', { unlockCode: response.data.unlockCode })
       })
       
-      setSelectedComputer(null)
-      setSelectedTimeSlots([])
+      // Keep selected time slots visible after successful booking
+      // setSelectedComputer(null)
+      // setSelectedTimeSlots([])
       fetchComputers()
       fetchBookings()
     } catch (error) {
       console.error('Booking error:', error.response?.data)
-      const errorMessage = error.response?.data?.error || 'Đặt máy thất bại'
+      const errorMessage = error.response?.data?.error || t('computers.bookingError')
       
-      // Handle booking limit exceeded error
-      if (errorMessage.includes('time slots')) {
+      // Handle specific error messages with i18n
+      if (errorMessage.includes('Start time cannot be in the past')) {
+        setMessage({ 
+          type: 'error', 
+          text: t('computers.pastTime')
+        })
+      } else if (errorMessage.includes('End time must be after start time')) {
+        setMessage({ 
+          type: 'error', 
+          text: t('computers.invalidTime')
+        })
+      } else if (errorMessage.includes('time slots')) {
         setMessage({ 
           type: 'error', 
           text: t('computers.bookingLimitExceeded') || errorMessage
+        })
+      } else if (errorMessage.includes('already booked')) {
+        setMessage({ 
+          type: 'error', 
+          text: t('computers.alreadyBooked')
         })
       } else {
         setMessage({ 
@@ -342,15 +395,25 @@ export default function Computers() {
       <div className="bg-white rounded-xl border overflow-hidden">
         <div className="flex">
           {/* Computer List (Left Side) */}
-          <div className="w-1/4 border-r border-gray-200">
+          <div className="w-[15%] border-r border-gray-200">
             <div className="p-4 bg-gray-50 border-b">
               <h3 className="font-semibold text-gray-900">{t('computers.availableMachines')}</h3>
             </div>
-            <div className="max-h-96 overflow-y-auto">
+            <div 
+              className="max-h-96 overflow-y-auto"
+              onMouseLeave={() => {
+                // Only hide tooltip when leaving the entire computer list
+                const timeout = setTimeout(() => {
+                  setTooltip({ show: false, content: null, x: 0, y: 0 })
+                }, 100)
+                setTooltipTimeout(timeout)
+              }}
+            >
               {sortedComputers.map((computer) => (
                 <div
                   key={computer.id}
                   onClick={() => handleComputerSelect(computer)}
+                  onMouseEnter={(e) => handleMouseEnter(computer, e)}
                   className={`p-3 border-b border-gray-100 transition-colors ${
                     computer.status === 'maintenance' || computer.status === 'disabled'
                       ? 'cursor-not-allowed opacity-50 bg-gray-100'
@@ -361,48 +424,34 @@ export default function Computers() {
                 >
                   <div className="flex items-center space-x-2">
                     <div className={`p-1.5 rounded-lg ${
-                      computer.status === 'in_use' ? 'bg-red-100' : 
-                      computer.status === 'booked' ? 'bg-yellow-100' : 
                       computer.status === 'maintenance' ? 'bg-orange-100' :
                       computer.status === 'disabled' ? 'bg-gray-100' :
+                      computer.status === 'in_use' ? 'bg-red-100' : 
+                      computer.status === 'booked' ? 'bg-blue-100' : 
                       getBusinessHoursStatus(computer) === 'full' ? 'bg-purple-100' :
                       getBusinessHoursStatus(computer) === 'partial' ? 'bg-blue-100' : 'bg-green-100'
                     }`}>
                       <Monitor className={`h-4 w-4 ${
-                        computer.status === 'in_use' ? 'text-red-600' : 
-                        computer.status === 'booked' ? 'text-yellow-600' : 
                         computer.status === 'maintenance' ? 'text-orange-600' :
                         computer.status === 'disabled' ? 'text-gray-600' :
+                        computer.status === 'in_use' ? 'text-red-600' : 
+                        computer.status === 'booked' ? 'text-blue-600' : 
                         getBusinessHoursStatus(computer) === 'full' ? 'text-purple-600' :
                         getBusinessHoursStatus(computer) === 'partial' ? 'text-blue-600' : 'text-green-600'
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-gray-900 truncate text-sm">{computer.name}</h4>
-                      {computer.location && (
-                        <div className="flex items-center text-xs text-gray-500">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          <span className="truncate">{computer.location}</span>
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-500 mt-1 whitespace-nowrap">
+                        {computer.status === 'maintenance' ? t('computers.maintenance') :
+                         computer.status === 'disabled' ? t('computers.disabled') :
+                         computer.status === 'in_use' ? t('computers.inUse') :
+                         computer.status === 'booked' ? t('computers.partiallyAvailable') :
+                         getBusinessHoursStatus(computer) === 'full' ? t('computers.bookedFull') :
+                         getBusinessHoursStatus(computer) === 'partial' ? t('computers.partiallyAvailable') :
+                         t('computers.available')}
+                      </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      computer.status === 'in_use' ? 'bg-red-100 text-red-700' :
-                      computer.status === 'booked' ? 'bg-yellow-100 text-yellow-700' :
-                      computer.status === 'maintenance' ? 'bg-orange-100 text-orange-700' :
-                      computer.status === 'disabled' ? 'bg-gray-100 text-gray-700' :
-                      getBusinessHoursStatus(computer) === 'full' ? 'bg-purple-100 text-purple-700' :
-                      getBusinessHoursStatus(computer) === 'partial' ? 'bg-blue-100 text-blue-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {computer.status === 'in_use' ? t('computers.booked') :
-                       computer.status === 'booked' ? t('computers.booked') :
-                       computer.status === 'maintenance' ? t('computers.maintenance') :
-                       computer.status === 'disabled' ? t('computers.disabled') :
-                       getBusinessHoursStatus(computer) === 'full' ? t('computers.bookedFull') :
-                       getBusinessHoursStatus(computer) === 'partial' ? t('computers.partiallyAvailable') :
-                       t('computers.available')}
-                    </span>
                   </div>
                 </div>
               ))}
@@ -421,7 +470,7 @@ export default function Computers() {
                 <div className="space-y-2">
                   {/* Time Header */}
                   <div className="time-grid mb-2 overflow-x-hidden" ref={headerScrollRef} onScroll={syncHeaderScroll}>
-                    <div className="min-w-max grid grid-flow-col auto-cols-[18px] gap-1 items-end">
+                    <div className="min-w-max grid grid-flow-col auto-cols-[17px] gap-1 items-end">
                       {timeSlots.map((timeSlot, i) => (
                         <div key={timeSlot.getTime()} data-idx={i} className="text-center text-[13px] font-medium text-gray-700 py-0 leading-none">
                           {format(timeSlot, 'mm') === '00' ? `${format(timeSlot, 'H')}h` : ''}
@@ -432,24 +481,28 @@ export default function Computers() {
                   
                   {/* Time Grid */}
                   <div className="time-grid overflow-x-hidden" ref={gridScrollRef} onScroll={syncGridScroll}>
-                    <div className="min-w-max grid grid-flow-col auto-cols-[18px] gap-1">
+                    <div className="min-w-max grid grid-flow-col auto-cols-[17px] gap-1">
                     {timeSlots.map((timeSlot) => {
                       const isBooked = isTimeSlotBooked(selectedComputer, timeSlot)
+                      const isLastSlot = isLastTimeSlot(timeSlot)
                       const isSelected = isTimeSlotSelected(timeSlot)
                       const isCurrentHour = isSameMinute(timeSlot, new Date())
                       const hour = timeSlot.getHours()
                       const inWorking = hour >= 8 && hour < 17
+                      const isDisabled = isBooked || isLastSlot
                       
                       return (
                         <button
                           key={timeSlot.getTime()}
-                          onClick={() => handleTimeSlotClick(timeSlot)}
-                          onMouseDown={() => handleTimeSlotMouseDown(timeSlot)}
-                          onMouseEnter={() => handleTimeSlotMouseEnter(timeSlot)}
-                          disabled={isBooked}
+                          onClick={() => !isDisabled && handleTimeSlotClick(timeSlot)}
+                          onMouseDown={() => !isDisabled && handleTimeSlotMouseDown(timeSlot)}
+                          onMouseEnter={() => !isDisabled && handleTimeSlotMouseEnter(timeSlot)}
+                          disabled={isDisabled}
                           className={`h-[22px] rounded text-[11px] font-medium transition-all duration-200 ${
-                            isBooked
-                              ? 'bg-red-200 text-red-600 cursor-not-allowed opacity-60'
+                            isDisabled
+                              ? isLastSlot 
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                                : 'bg-red-200 text-red-600 cursor-not-allowed opacity-60'
                               : isSelected
                               ? 'bg-primary-500 text-white shadow-md'
                               : isCurrentHour
@@ -458,9 +511,9 @@ export default function Computers() {
                               ? 'bg-green-100 text-green-700 hover:bg-green-200'
                               : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                           }`}
-                          title={`${format(timeSlot, 'HH:mm')}`}
+                          title={isLastSlot ? `${format(timeSlot, 'HH:mm')} (${t('computers.cannotBookSlot')})` : `${format(timeSlot, 'HH:mm')}`}
                         >
-                          {isBooked ? '❌' : isSelected ? '✓' : ''}
+                          {isBooked ? '❌' : isLastSlot ? '🚫' : isSelected ? '✓' : ''}
                         </button>
                       )
                     })}
@@ -504,6 +557,55 @@ export default function Computers() {
           <Monitor className="h-16 w-16 mx-auto text-gray-300 mb-4" />
           <p className="text-gray-500">{t('computers.noMachines')}</p>
         </div>
+      )}
+
+      {/* Custom Tooltip */}
+      {tooltip.show && tooltip.content && (
+        <>
+          {/* Invisible bridge between button and tooltip */}
+          <div
+            className="fixed z-40"
+            style={{
+              left: tooltip.x - 10,
+              top: tooltip.y,
+              width: 20,
+              height: 40
+            }}
+            onMouseEnter={() => {
+              if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout)
+                setTooltipTimeout(null)
+              }
+            }}
+          />
+          
+          {/* Tooltip content */}
+          <div
+            className="fixed z-50 bg-white text-gray-900 px-3 py-2 rounded-lg shadow-lg text-sm max-w-xs border border-gray-200"
+            style={{
+              left: tooltip.x,
+              top: tooltip.y
+            }}
+            onMouseEnter={() => {
+              // Clear timeout when mouse enters tooltip
+              if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout)
+                setTooltipTimeout(null)
+              }
+            }}
+            onMouseLeave={() => {
+              // Hide tooltip when mouse leaves tooltip
+              setTooltip({ show: false, content: null, x: 0, y: 0 })
+            }}
+          >
+            <div className="font-bold text-gray-900 mb-1">{tooltip.content.name}</div>
+            <div className="text-gray-600 text-xs">
+              <div>{t('computers.location')}: {tooltip.content.location || t('computers.notAvailable')}   -   {t('computers.priorityGroup')}: {tooltip.content.preferred_group || t('computers.notAvailable')}</div>
+              <div>{t('computers.memory')}: {tooltip.content.memory_gb || t('computers.notAvailable')}   -   {t('computers.ipAddress')}: {tooltip.content.ip_address || t('computers.notAvailable')}</div>
+              <div>{t('computers.description')}: {tooltip.content.description || t('computers.notAvailable')}</div>
+            </div>
+          </div>
+        </>
       )}
 
     </div>

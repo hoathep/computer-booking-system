@@ -25,7 +25,7 @@ router.post('/check-unlock', (req, res) => {
       JOIN users u ON b.user_id = u.id
       LEFT JOIN sessions s ON s.booking_id = b.id
       WHERE b.computer_id = ?
-      AND b.status IN ('pending', 'active')
+      AND b.status IN ('booked', 'active')
       AND ? >= b.start_time
       AND ? <= b.end_time
       ORDER BY b.start_time
@@ -39,16 +39,16 @@ router.post('/check-unlock', (req, res) => {
       });
     }
 
-    // Update booking status to active if it's pending and time has started
-    if (booking.status === 'pending' && currentTime >= startTime) {
-      db.prepare(`UPDATE bookings SET status = 'active' WHERE id = ?`).run(booking.id);
-      booking.status = 'active'; // Update local object for response
-    }
-
     // Check if session should be unlocked
     const startTime = new Date(booking.start_time);
     const endTime = new Date(booking.end_time);
     const currentTime = new Date(now);
+
+    // Update booking status to active if it's booked and time has started
+    if (booking.status === 'booked' && currentTime >= startTime) {
+      db.prepare(`UPDATE bookings SET status = 'active' WHERE id = ?`).run(booking.id);
+      booking.status = 'active'; // Update local object for response
+    }
 
     const shouldUnlock = currentTime >= startTime && currentTime <= endTime;
 

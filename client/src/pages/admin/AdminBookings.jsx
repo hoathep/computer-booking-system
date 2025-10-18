@@ -79,13 +79,13 @@ export default function AdminBookings() {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Chờ' },
+      booked: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Đã đặt' },
       active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
       completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Hoàn thành' },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Đã hủy' }
     }
 
-    const config = statusConfig[status] || statusConfig.pending
+    const config = statusConfig[status] || statusConfig.booked
 
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
@@ -117,7 +117,7 @@ export default function AdminBookings() {
             className="input py-2"
           >
             <option value="all">{t('common.all')}</option>
-            <option value="pending">{t('bookings.pending')}</option>
+            <option value="booked">{t('bookings.booked')}</option>
             <option value="active">{t('bookings.active')}</option>
             <option value="completed">{t('bookings.completed')}</option>
             <option value="cancelled">{t('bookings.cancelled')}</option>

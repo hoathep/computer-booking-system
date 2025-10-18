@@ -17,14 +17,15 @@ router.get('/hot', authenticateToken, (req, res) => {
                FROM bookings b2 
                WHERE b2.computer_id = c.id 
                AND b2.status = 'active'
-               AND datetime('now') BETWEEN b2.start_time AND b2.end_time
+               AND datetime('now') >= datetime(b2.start_time) 
+               AND datetime('now') <= datetime(b2.end_time)
              ) as is_currently_in_use,
              (
                SELECT COUNT(*) 
                FROM bookings b3 
                WHERE b3.computer_id = c.id 
-               AND b3.status = 'pending'
-               AND datetime('now') < b3.start_time
+               AND b3.status = 'booked'
+               AND datetime('now') < datetime(b3.start_time)
              ) as is_booked_future
       FROM computers c
       LEFT JOIN bookings b ON c.id = b.computer_id
@@ -67,14 +68,14 @@ router.get('/', authenticateToken, (req, res) => {
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
-          AND b.status = 'pending'
+          AND b.status = 'booked'
           AND datetime('now') < b.start_time
         ) as is_booked_future,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
-          AND b.status IN ('pending', 'active')
+          AND b.status IN ('booked', 'active')
           AND datetime('now') BETWEEN b.start_time AND b.end_time
         ) as is_currently_booked
       FROM computers c
@@ -124,7 +125,7 @@ router.get('/:id/bookings', authenticateToken, (req, res) => {
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       WHERE b.computer_id = ?
-      AND b.status IN ('pending', 'active', 'completed')
+      AND b.status IN ('booked', 'active', 'completed')
     `;
     
     const params = [req.params.id];
@@ -148,11 +149,11 @@ router.post('/cleanup-expired', authenticateToken, (req, res) => {
   try {
     const now = new Date().toISOString();
     
-    // Update pending bookings to active if start time has passed
+    // Update booked bookings to active if start time has passed
     const activatedBookings = db.prepare(`
       UPDATE bookings 
       SET status = 'active'
-      WHERE status = 'pending'
+      WHERE status = 'booked'
       AND start_time <= ? AND end_time > ?
     `).run(now, now);
 
@@ -164,11 +165,11 @@ router.post('/cleanup-expired', authenticateToken, (req, res) => {
       AND end_time <= ?
     `).run(now);
 
-    // Update expired pending bookings to cancelled (if start time passed but end time also passed)
-    const expiredPending = db.prepare(`
+    // Update expired booked bookings to cancelled (if start time passed but end time also passed)
+    const expiredBooked = db.prepare(`
       UPDATE bookings 
       SET status = 'cancelled'
-      WHERE status = 'pending'
+      WHERE status = 'booked'
       AND start_time < ? AND end_time <= ?
     `).run(now, now);
 
@@ -176,7 +177,7 @@ router.post('/cleanup-expired', authenticateToken, (req, res) => {
       message: 'Status update completed successfully',
       activatedBookings: activatedBookings.changes,
       expiredActive: expiredActive.changes,
-      expiredPending: expiredPending.changes
+      expiredBooked: expiredBooked.changes
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

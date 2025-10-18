@@ -96,8 +96,9 @@
     "note": "Note",
     "noteText": "You can book up to {{count}} computer(s) at the same time.",
     "hotComputers": "Hot Computers",
-    "hot": "Hot",
+    "hot": "Most Booked",
     "available": "Available",
+    "rating": "Rating",
     "busy": "Busy"
   },
   "computers": {
@@ -111,6 +112,7 @@
     "partiallyAvailable": "Partially Available",
     "cannotBookMaintenance": "Cannot book computer under maintenance",
     "cannotBookInUse": "Cannot book computer in use",
+    "alreadyBooked": "Computer is already booked for this time slot",
     "bookingLimitExceeded": "You can only book up to {max} computers. You currently have {current} slot(s) booked and trying to book {requested} more slot(s).",
     "bookComputer": "Book Computer",
     "computerName": "Computer Name",
@@ -137,13 +139,22 @@
     "selectMachineToBook": "Select machine to book",
     "selectedTime": "Selected time",
     "hours": "hours",
-    "noMachines": "No machines available"
+    "noMachines": "No machines available",
+    "pleaseSelectTime": "Please select time!",
+    "bookingSuccessMessage": "Booking successful! Unlock code: {{unlockCode}}",
+    "location": "Location",
+    "priorityGroup": "Priority Group",
+    "memory": "Memory (GB)",
+    "ipAddress": "IP",
+    "description": "Description",
+    "notAvailable": "N/A",
+    "cannotBookSlot": "Cannot book"
   },
   "bookings": {
     "title": "My Bookings",
     "subtitle": "Manage all your computer bookings",
     "noBookings": "You have no bookings",
-    "pending": "Pending",
+    "booked": "Booked",
     "booked": "Booked",
     "active": "Active",
     "completed": "Completed",
@@ -163,7 +174,9 @@
     "createdAt": "Created At",
     "loginPassword": "Login Password",
     "totalBookings": "bookings",
-    "ipAddress": "IP Address"
+    "ipAddress": "IP Address",
+    "startTimePast": "Start time cannot be in the past",
+    "endTimeBeforeStart": "End time must be after start time"
   },
   "admin": {
     "title": "Administration",

@@ -96,8 +96,9 @@
     "note": "注意",
     "noteText": "同時に最大{{count}}台のコンピューターを予約できます。",
     "hotComputers": "人気のコンピューター",
-    "hot": "人気",
+    "hot": "予約多数",
     "available": "利用可能",
+    "rating": "評価",
     "busy": "使用中"
   },
   "computers": {
@@ -111,6 +112,7 @@
     "partiallyAvailable": "部分的利用可能",
     "cannotBookMaintenance": "メンテナンス中のコンピューターは予約できません",
     "cannotBookInUse": "使用中のコンピューターは予約できません",
+    "alreadyBooked": "この時間帯は既に予約されています",
     "bookingLimitExceeded": "最大{max}台のコンピューターまで予約できます。現在{current}スロット予約済みで、さらに{requested}スロット予約しようとしています。",
     "bookComputer": "コンピューター予約",
     "computerName": "コンピューター名",
@@ -137,13 +139,22 @@
     "selectMachineToBook": "予約するマシンを選択",
     "selectedTime": "選択された時間",
     "hours": "時間",
-    "noMachines": "利用可能なマシンがありません"
+    "noMachines": "利用可能なマシンがありません",
+    "pleaseSelectTime": "時間を選択してください！",
+    "bookingSuccessMessage": "予約が成功しました！アンロックコード: {{unlockCode}}",
+    "location": "場所",
+    "priorityGroup": "優先グループ",
+    "memory": "メモリ (GB)",
+    "ipAddress": "IP",
+    "description": "説明",
+    "notAvailable": "N/A",
+    "cannotBookSlot": "予約不可"
   },
   "bookings": {
     "title": "私の予約",
     "subtitle": "すべてのコンピューター予約を管理",
     "noBookings": "予約がありません",
-    "pending": "保留中",
+    "booked": "予約済み",
     "booked": "予約済み",
     "active": "アクティブ",
     "completed": "完了",
@@ -163,7 +174,9 @@
     "createdAt": "作成日",
     "loginPassword": "ログインパスワード",
     "totalBookings": "予約",
-    "ipAddress": "IPアドレス"
+    "ipAddress": "IPアドレス",
+    "startTimePast": "開始時間は過去の時間にできません",
+    "endTimeBeforeStart": "終了時間は開始時間より後である必要があります"
   },
   "admin": {
     "title": "管理",

@@ -293,20 +293,78 @@ npm run build
 - Form đăng nhập với thiết kế gradient hiện đại
 - Hỗ trợ đăng ký tài khoản mới
 
-### Dashboard User
-- Thống kê số máy đang sử dụng
-- Hiển thị booking đang hoạt động
-- Hướng dẫn sử dụng
+## 📖 Hướng dẫn sử dụng
 
-### Đặt máy
-- Grid view các máy tính
-- Hiển thị trạng thái available/booked
-- Modal chọn thời gian
+### 📚 **Tài liệu chi tiết**
+- **[Hướng dẫn sử dụng đầy đủ](USER_GUIDE.md)** - Hướng dẫn chi tiết cho User và Admin
+- **[Hướng dẫn cài đặt](INSTALL.md)** - Hướng dẫn cài đặt hệ thống
+- **[Kiến trúc hệ thống](ARCHITECTURE.md)** - Tài liệu kỹ thuật
+- **[Danh sách tính năng](FEATURES.md)** - Tổng hợp tất cả tính năng
 
-### Admin Panel
-- Dashboard thống kê
-- Quản lý users, máy, bookings, nhóm
-- Giao diện table với các action
+### 👤 **Hướng dẫn User nhanh**
+
+#### 🏠 **Trang chủ Dashboard**
+- **Thông tin tổng quan:** Số lịch đang đặt, tổng lịch đã đặt, giới hạn máy
+- **Lịch đang đặt:** Danh sách máy đã đặt với thời gian và mật khẩu đăng nhập
+- **Máy hot:** Xem máy được đặt nhiều nhất, sắp xếp theo "Hot" hoặc "Rảnh"
+- **Đánh giá máy:** Sau khi sử dụng, có thể đánh giá máy từ 1-5 sao
+
+#### 🖥️ **Đặt máy tính**
+1. **Chọn máy:** Từ danh sách bên trái, click vào máy muốn đặt
+2. **Chọn thời gian:** Click vào các khung giờ trên timeline (mỗi khung = 30 phút)
+3. **Xác nhận:** Click "Đặt máy" và nhập mật khẩu
+4. **Nhận email:** Hệ thống sẽ gửi mật khẩu đăng nhập qua email
+
+#### 📅 **Quản lý lịch đặt**
+- **Xem lịch:** Vào "Lịch của tôi" để xem tất cả lịch đã đặt
+- **Hủy lịch:** Click nút "Hủy" (chỉ được hủy trước giờ bắt đầu)
+- **Đánh giá:** Sau khi sử dụng, click "Đánh giá" để cho điểm máy
+- **Thông tin chi tiết:** Xem IP, mật khẩu đăng nhập, trạng thái
+
+### 👨‍💼 **Hướng dẫn Admin nhanh**
+
+#### 🏠 **Dashboard Admin**
+- **Thống kê tổng quan:** Số user, máy tính, booking, nhóm
+- **Biểu đồ thời gian:** Thống kê booking theo ngày/tuần/tháng/năm
+- **Xuất báo cáo:** Tải file Excel với dữ liệu chi tiết
+
+#### 👥 **Quản lý User & Nhóm**
+- **Users:** Thêm/sửa/xóa user, đặt giới hạn booking
+- **Groups:** Tạo nhóm, import/export CSV, đặt giới hạn booking
+- **Phân quyền:** Đặt giới hạn booking theo nhóm hoặc từng user
+
+#### 🖥️ **Quản lý máy tính**
+- **Computers:** Thêm/sửa máy, cập nhật trạng thái
+- **Trạng thái:** Available (có thể đặt) / Maintenance (bảo trì) / Disabled (vô hiệu hóa)
+- **Thông tin:** Tên, vị trí, IP, bộ nhớ, mô tả, nhóm ưu tiên
+
+#### 📊 **Báo cáo và thống kê**
+- **Báo cáo tổng hợp:** Xem thống kê theo User/Group/Computer
+- **Biểu đồ thời gian:** Xu hướng booking theo thời gian
+- **Xuất Excel:** Tải file báo cáo chi tiết
+
+#### ⚙️ **Cài đặt hệ thống**
+- **Email Server:** Cấu hình SMTP để gửi email mật khẩu
+- **Footer Settings:** Thiết lập thông tin liên hệ, số điện thoại, Teams link
+- **Translations:** Quản lý đa ngôn ngữ (Tiếng Việt, English, 日本語)
+
+### 🔧 **Tính năng nâng cao**
+
+#### ⭐ **Hệ thống đánh giá**
+- User đánh giá máy sau khi sử dụng (1-5 sao)
+- Ảnh hưởng đến "Hot Computers"
+- Có thể thay đổi đánh giá trong 5 ngày
+
+#### 📧 **Email tự động**
+- Gửi mật khẩu đăng nhập khi đặt máy
+- Cấu hình SMTP trong Admin
+- Email bao gồm thông tin booking chi tiết
+
+#### 🎨 **Giao diện hiện đại**
+- **Dark/Light mode:** Chuyển đổi giao diện sáng/tối
+- **Đa ngôn ngữ:** Tiếng Việt, English, 日本語
+- **Responsive:** Hoạt động tốt trên mọi thiết bị
+- **Modern UI:** Sử dụng Tailwind CSS với gradient và glassmorphism
 
 ## 📄 License
 

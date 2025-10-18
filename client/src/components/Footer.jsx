@@ -18,7 +18,7 @@ export default function Footer() {
     <footer className="mt-10 border-t bg-gradient-to-r from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
         <div className="text-sm text-gray-600 text-center md:text-left whitespace-nowrap">
-          Computer Booking System © Design Center DENSO Viet Nam
+          Computer Booking System © Design Center DENSO Viet Nam - 2025
         </div>
         <div className="text-sm text-gray-600 text-center">
           {cfg.supportEmail && (
@@ -29,7 +29,7 @@ export default function Footer() {
         </div>
         <div className="text-sm text-center md:text-right">
           {cfg.teamsLink && (
-            <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">Microsoft Teams</a>
+            <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">Chat with us on Teams</a>
           )}
         </div>
       </div>

@@ -16,7 +16,7 @@ export default function Dashboard() {
   })
   const [hotComputers, setHotComputers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [sortBy, setSortBy] = useState('hot') // 'hot' or 'available'
+  const [sortBy, setSortBy] = useState('hot') // 'hot', 'available', or 'rating'
   const [message, setMessage] = useState(null)
 
   useEffect(() => {
@@ -116,139 +116,229 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <Clock className="h-5 w-5 mr-2 text-primary-600" />
-            {t('dashboard.currentBookings')}
-          </h2>
-          
-          {stats.activeBookings.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>{t('dashboard.noActiveBookings')}</p>
-              <Link to="/computers" className="text-primary-600 hover:text-primary-700 font-medium mt-2 inline-block">
-                {t('dashboard.bookNow')}
-              </Link>
-            </div>
-          ) : (
-            <div className="max-h-80 overflow-y-auto">
-              <div className="space-y-3 pr-2">
-                {stats.activeBookings.map((booking) => (
-                  <div key={booking.id} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold text-gray-900">{booking.computer_name}</h3>
-                          <span className="text-xs text-gray-500">({booking.ip_address || 'N/A'})</span>
-                        </div>
-                        <p className="text-sm text-gray-600">{booking.location}</p>
-                      </div>
-                      <span className="px-2 py-1 bg-green-600 text-white text-xs font-medium rounded-full">
-                        {t('dashboard.booked') || 'Đã được book'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <p>
-                        <span className="font-medium">Thời gian:</span> {format(new Date(booking.start_time), 'HH:mm', { locale: vi })} - {format(new Date(booking.end_time), 'HH:mm', { locale: vi })} ({format(new Date(booking.start_time), 'dd/MM', { locale: vi })})
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="card">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Current Bookings Section */}
+        <div className="card min-h-[350px] sm:min-h-[320px] flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                <TrendingUp className="h-5 w-5 mr-2 text-primary-600" />
-                {t('dashboard.hotComputers') || 'Máy Hot'}
-              </h2>
-              <span className="ml-3 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
-                {hotComputers.filter(computer => sortBy === 'available' ? computer.status === 'available' : true).length} máy
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSortBy('hot')}
-                className={`px-3 py-1 text-sm rounded-lg ${
-                  sortBy === 'hot' 
-                    ? 'bg-primary-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {t('dashboard.hot') || 'Hot'}
-              </button>
-              <button
-                onClick={() => setSortBy('available')}
-                className={`px-3 py-1 text-sm rounded-lg ${
-                  sortBy === 'available' 
-                    ? 'bg-primary-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {t('dashboard.available') || 'Rảnh'}
-              </button>
-            </div>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-primary-600" />
+              <span className="hidden sm:inline">{t('dashboard.currentBookings')}</span>
+              <span className="sm:hidden">Lịch đặt</span>
+            </h2>
+            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-full flex-shrink-0">
+              {stats.activeBookings.length} {t('dashboard.booked') || 'đặt'}
+            </span>
           </div>
           
-          <div className="max-h-96 overflow-y-auto">
-            {hotComputers.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Monitor className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>Chưa có dữ liệu máy tính</p>
+          <div className="flex-1">
+            {stats.activeBookings.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Calendar className="h-8 w-8 text-gray-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-600 mb-2">{t('dashboard.noActiveBookings')}</p>
+                <Link to="/computers" className="text-primary-600 hover:text-primary-700 font-medium text-sm inline-flex items-center gap-1 transition-colors">
+                  <span>{t('dashboard.bookNow')}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
               </div>
             ) : (
-              <>
-                {hotComputers.filter(computer => sortBy === 'available' ? computer.status === 'available' : true).length > 5 && (
-                  <div className="text-xs text-gray-500 mb-2 text-center">
-                    Cuộn để xem thêm máy
-                  </div>
-                )}
-                <div className="space-y-3 pr-2">
-                {hotComputers
-                  .filter(computer => sortBy === 'available' ? computer.status === 'available' : true)
-                  .map((computer) => (
-                    <div key={computer.id} className="p-4 border rounded-lg hover:bg-gray-50">
+              <div className="h-80 overflow-y-auto scrollbar-thin">
+                <div className="space-y-2 pr-2">
+                  {stats.activeBookings.map((booking) => (
+                    <div key={booking.id} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{computer.name}</h3>
-                          <p className="text-sm text-gray-600">{computer.location}</p>
-                          <div className="flex items-center gap-4 mt-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 truncate">{booking.computer_name}</h3>
+                            <span className="text-xs text-gray-500 flex-shrink-0">({booking.ip_address || 'N/A'})</span>
+                          </div>
+                          <p className="text-sm text-gray-600 truncate mb-2">{booking.location}</p>
+                          <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <span className="text-sm text-gray-600">
-                                {computer.rating ? computer.rating.toFixed(1) : '0.0'} ({computer.rating_count || 0})
+                              <Clock className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                              <span className="text-xs text-gray-600">
+                                {format(new Date(booking.start_time), 'HH:mm', { locale: vi })} - {format(new Date(booking.end_time), 'HH:mm', { locale: vi })}
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4 text-blue-500" />
-                              <span className="text-sm text-gray-600">{computer.booking_count || 0} lượt</span>
+                              <Calendar className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                              <span className="text-xs text-gray-600">{format(new Date(booking.start_time), 'dd/MM', { locale: vi })}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            computer.status === 'available' 
+                        <div className="text-right flex-shrink-0 ml-2">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            booking.status === 'active' 
                               ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
+                              : booking.status === 'booked'
+                              ? 'bg-blue-100 text-blue-800'
+                              : booking.status === 'completed'
+                              ? 'bg-gray-100 text-gray-800'
+                              : booking.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {computer.status === 'available' ? t('dashboard.available') || 'Rảnh' : t('dashboard.busy') || 'Bận'}
+                            {booking.status === 'active' 
+                              ? t('bookings.active')
+                              : booking.status === 'booked'
+                              ? t('bookings.booked')
+                              : booking.status === 'completed'
+                              ? t('bookings.completed')
+                              : booking.status === 'cancelled'
+                              ? t('bookings.cancelled')
+                              : booking.status
+                            }
                           </span>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
 
-            <div className="card">
+        {/* Hot Computers Section */}
+        <div className="card min-h-[350px] sm:min-h-[320px] flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2 text-primary-600 flex-shrink-0" />
+                <span className="hidden sm:inline">{t('dashboard.hotComputers') || 'Máy Hot'}</span>
+                <span className="sm:hidden">Máy Hot</span>
+              </h2>
+              <span className="ml-3 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full flex-shrink-0">
+                {hotComputers.filter(computer => {
+                  if (sortBy === 'available') return computer.status === 'available'
+                  if (sortBy === 'rating') return computer.rating > 0
+                  return true
+                }).length} máy
+              </span>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => setSortBy('hot')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 ${
+                  sortBy === 'hot' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <TrendingUp className="h-4 w-4" />
+                {t('dashboard.hot') || 'Book nhiều'}
+              </button>
+              <button
+                onClick={() => setSortBy('available')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 ${
+                  sortBy === 'available' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <CheckCircle className="h-4 w-4" />
+                {t('dashboard.available') || 'Rảnh'}
+              </button>
+              <button
+                onClick={() => setSortBy('rating')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 ${
+                  sortBy === 'rating' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Star className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1">
+            <div className="h-80 overflow-y-auto scrollbar-thin">
+              {hotComputers.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Monitor className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-600">Chưa có dữ liệu máy tính</p>
+                </div>
+              ) : (
+                <>
+                  {hotComputers.filter(computer => {
+                    if (sortBy === 'available') return computer.status === 'available'
+                    if (sortBy === 'rating') return computer.rating > 0
+                    return true
+                  }).length > 5 && (
+                    <div className="text-xs text-gray-500 mb-3 text-center bg-gray-50 py-2 rounded">
+                      Cuộn để xem thêm máy
+                    </div>
+                  )}
+                  <div className="space-y-2 pr-2">
+                    {hotComputers
+                      .filter(computer => {
+                        if (sortBy === 'available') return computer.status === 'available'
+                        if (sortBy === 'rating') return computer.rating > 0
+                        return true
+                      })
+                      .sort((a, b) => {
+                        if (sortBy === 'hot') return (b.booking_count || 0) - (a.booking_count || 0)
+                        if (sortBy === 'available') return a.name.localeCompare(b.name)
+                        if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
+                        return 0
+                      })
+                      .map((computer) => (
+                        <div key={computer.id} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 truncate">{computer.name}</h3>
+                              <p className="text-sm text-gray-600 truncate mb-2">{computer.location}</p>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                                  <span className="text-xs text-gray-600">
+                                    {computer.rating ? computer.rating.toFixed(1) : '0.0'} ({computer.rating_count || 0})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Users className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                  <span className="text-xs text-gray-600">{computer.booking_count || 0} lượt</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-2">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                computer.status === 'available' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : computer.status === 'maintenance'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : computer.status === 'disabled'
+                                  ? 'bg-gray-100 text-gray-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {computer.status === 'available' 
+                                  ? t('dashboard.available') || 'Rảnh' 
+                                  : computer.status === 'maintenance'
+                                  ? t('computers.maintenance') || 'Bảo trì'
+                                  : computer.status === 'disabled'
+                                  ? t('computers.disabled') || 'Vô hiệu hóa'
+                                  : t('dashboard.busy') || 'Bận'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Guide Section */}
+      <div className="card">
           <h2 className="text-xl font-bold text-gray-900 mb-4">{t('dashboard.guide')}</h2>
           <div className="space-y-4">
             <div className="flex items-start">
@@ -287,7 +377,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
     </div>
   )
 }

@@ -96,8 +96,9 @@
     "note": "Lưu ý",
     "noteText": "Bạn có thể đặt tối đa {{count}} máy cùng lúc.",
     "hotComputers": "Máy Hot",
-    "hot": "Hot",
+    "hot": "Book nhiều",
     "available": "Rảnh",
+    "rating": "Sao",
     "busy": "Bận"
   },
   "computers": {
@@ -111,6 +112,7 @@
     "partiallyAvailable": "Sẵn sàng một phần",
     "cannotBookMaintenance": "Không thể đặt máy đang bảo trì",
     "cannotBookInUse": "Không thể đặt máy đang được sử dụng",
+    "alreadyBooked": "Máy tính đã được đặt cho khoảng thời gian này",
     "bookingLimitExceeded": "Bạn chỉ có thể đặt tối đa {max} máy tính. Hiện tại bạn đã đặt {current} slot(s) và đang cố gắng đặt thêm {requested} slot(s).",
     "bookComputer": "Đặt máy",
     "computerName": "Tên máy",
@@ -137,13 +139,22 @@
     "selectMachineToBook": "Chọn máy để đặt",
     "selectedTime": "Thời gian đã chọn",
     "hours": "giờ",
-    "noMachines": "Không có máy nào"
+    "noMachines": "Không có máy nào",
+    "pleaseSelectTime": "Vui lòng chọn thời gian!",
+    "bookingSuccessMessage": "Đặt máy thành công! Mã mở khóa: {{unlockCode}}",
+    "location": "Vị trí",
+    "priorityGroup": "Nhóm ưu tiên",
+    "memory": "Bộ nhớ (GB)",
+    "ipAddress": "IP",
+    "description": "Mô tả",
+    "notAvailable": "N/A",
+    "cannotBookSlot": "Không thể đặt"
   },
   "bookings": {
     "title": "Lịch đặt máy của tôi",
     "subtitle": "Quản lý tất cả các lịch đặt máy của bạn",
     "noBookings": "Bạn chưa có lịch đặt máy nào",
-    "pending": "Chờ xử lý",
+    "booked": "Đã đặt",
     "booked": "Đã book",
     "active": "Đang hoạt động",
     "completed": "Đã hoàn thành",
@@ -163,7 +174,9 @@
     "createdAt": "Ngày đặt",
     "loginPassword": "Mật khẩu đăng nhập",
     "totalBookings": "lịch đặt",
-    "ipAddress": "Địa chỉ IP"
+    "ipAddress": "Địa chỉ IP",
+    "startTimePast": "Thời gian bắt đầu không thể ở quá khứ",
+    "endTimeBeforeStart": "Thời gian kết thúc phải sau thời gian bắt đầu"
   },
   "admin": {
     "title": "Quản trị",

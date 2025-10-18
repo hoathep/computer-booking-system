@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { Globe, ChevronDown } from 'lucide-react'
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ variant = 'default' }) {
   const { currentLanguage, languages, changeLanguage } = useLanguage()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -17,7 +17,11 @@ export default function LanguageSwitcher() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-1.5 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:shadow-sm"
+        className={`flex items-center space-x-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-sm ${
+          variant === 'admin' 
+            ? 'text-white hover:text-primary-100 hover:bg-primary-600' 
+            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+        }`}
       >
         <Globe className="h-4 w-4" />
         <span className="text-lg">{currentLang?.flag}</span>

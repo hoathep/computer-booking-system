@@ -92,7 +92,7 @@ export default function AdminLayout() {
 
             {/* Right Side */}
             <div className="flex items-center space-x-2">
-              <LanguageSwitcher />
+              <LanguageSwitcher variant="admin" />
               
               {/* Action Buttons */}
               <div className="hidden lg:flex lg:items-center lg:space-x-3">

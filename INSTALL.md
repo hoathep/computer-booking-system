@@ -66,6 +66,23 @@ COMPUTER_ID=1
 CHECK_INTERVAL=10
 ```
 
+### Cấu hình Email (Tùy chọn)
+Để sử dụng tính năng gửi email mật khẩu đăng nhập:
+
+1. **Gmail:**
+   - Bật 2-Factor Authentication
+   - Tạo App Password
+   - Cấu hình trong Admin → Email Server
+
+2. **Outlook/Hotmail:**
+   - Sử dụng SMTP: smtp-mail.outlook.com
+   - Port: 587
+   - SSL: false
+
+3. **SMTP khác:**
+   - Cấu hình theo hướng dẫn của nhà cung cấp
+   - Test kết nối trong Admin
+
 **Lưu ý:** 
 - `COMPUTER_ID` phải khớp với ID máy trong database
 - Để xem ID máy, đăng nhập admin và vào "Quản lý Máy"
@@ -209,6 +226,93 @@ sudo systemctl status computer-booking-client
 3. **Testing:**
    - Tạo nhiều user để test giới hạn booking
    - Test trên nhiều máy với client-app
+
+## Bước 5: Thiết lập ban đầu
+
+### 1. Tạo tài khoản Admin
+```bash
+cd server
+node scripts/reset-admin.js
+```
+Hoặc đăng ký tài khoản đầu tiên sẽ tự động trở thành admin.
+
+### 2. Đăng nhập Admin
+- Truy cập: http://localhost:5173
+- Đăng nhập với tài khoản admin
+- Vào Admin Panel
+
+### 3. Cấu hình hệ thống
+
+#### Thêm máy tính
+1. Vào "System Setting" → "Computers"
+2. Click "Thêm máy"
+3. Điền thông tin: Tên, vị trí, IP, bộ nhớ, mô tả
+4. Chọn trạng thái: Available
+5. Lưu máy
+
+#### Tạo nhóm người dùng
+1. Vào "System Setting" → "Groups"
+2. Click "Thêm nhóm"
+3. Đặt tên nhóm và giới hạn booking
+4. Lưu nhóm
+
+#### Cấu hình Email (Tùy chọn)
+1. Vào "System Setting" → "Email Server"
+2. Điền thông tin SMTP
+3. Test kết nối
+4. Lưu cài đặt
+
+#### Cài đặt Footer
+1. Vào "System Setting" → "Footer Settings"
+2. Thiết lập thông tin liên hệ
+3. Lưu cài đặt
+
+### 4. Tạo tài khoản User
+1. Vào "System Setting" → "Users"
+2. Click "Thêm user"
+3. Điền thông tin user
+4. Chọn nhóm và đặt giới hạn booking
+5. Lưu user
+
+## Bước 6: Kiểm tra hoạt động
+
+### 1. Test đặt máy
+- Đăng nhập với tài khoản user
+- Vào "Đặt máy"
+- Chọn máy và thời gian
+- Đặt máy thành công
+
+### 2. Test Client App
+- Chạy Client App trên máy tính cần mở khóa
+- Kiểm tra kết nối với server
+- Test mở khóa khi đến giờ
+
+### 3. Test Email
+- Đặt máy với tài khoản user
+- Kiểm tra email nhận được
+- Xác nhận mật khẩu đăng nhập
+
+## Bước 7: Cấu hình Production
+
+### 1. Bảo mật
+- Thay đổi JWT_SECRET
+- Cấu hình HTTPS
+- Thiết lập firewall
+
+### 2. Database
+- Backup database định kỳ
+- Monitor hiệu suất
+- Tối ưu hóa queries
+
+### 3. Monitoring
+- Thiết lập logging
+- Monitor server resources
+- Cảnh báo khi có lỗi
+
+### 4. Backup
+- Backup database
+- Backup code
+- Thiết lập restore procedure
 
 ## Liên hệ hỗ trợ
 

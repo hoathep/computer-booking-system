@@ -38,19 +38,44 @@ app.listen(PORT, () => {
   console.log(`🌐 API endpoint: http://localhost:${PORT}/api`);
 });
 
-// --- No-show auto-cancel job ---
-// Every minute: cancel bookings that started >15 minutes ago but never unlocked
+// --- Booking status management job ---
+// Every minute: update booking statuses and handle no-shows
 import db from './database/init.js';
 schedule.scheduleJob('* * * * *', () => {
   try {
     const nowIso = new Date().toISOString();
-    // For each pending booking that has started, check group-specific no_show_minutes
+    
+    // 1. Update booked bookings to active if start time has passed
+    const activatedBookings = db.prepare(`
+      UPDATE bookings 
+      SET status = 'active'
+      WHERE status = 'booked'
+      AND start_time <= ? AND end_time > ?
+    `).run(nowIso, nowIso);
+    
+    if (activatedBookings.changes > 0) {
+      console.log(`🔄 Activated ${activatedBookings.changes} bookings`);
+    }
+    
+    // 2. Update expired active bookings to completed
+    const expiredActive = db.prepare(`
+      UPDATE bookings 
+      SET status = 'completed'
+      WHERE status = 'active'
+      AND end_time <= ?
+    `).run(nowIso);
+    
+    if (expiredActive.changes > 0) {
+      console.log(`✅ Completed ${expiredActive.changes} expired bookings`);
+    }
+    
+    // 3. Handle no-show cancellations
     const candidates = db.prepare(`
       SELECT b.id, b.user_id, b.start_time, gl.no_show_minutes
       FROM bookings b
       JOIN users u ON u.id = b.user_id
       LEFT JOIN group_limits gl ON gl.group_name = u.group_name
-      WHERE b.status = 'pending'
+      WHERE b.status = 'booked'
       AND b.start_time <= ?
     `).all(nowIso);
 
@@ -59,7 +84,7 @@ schedule.scheduleJob('* * * * *', () => {
       const minutes = (c.no_show_minutes ?? 15);
       const cutoff = new Date(new Date(c.start_time).getTime() + minutes * 60 * 1000);
       if (new Date(nowIso) >= cutoff) {
-        // still pending and not unlocked?
+        // still booked and not unlocked?
         const sess = db.prepare('SELECT unlocked_at FROM sessions WHERE booking_id = ?').get(c.id);
         if (!sess || !sess.unlocked_at) {
           staleIds.push(c.id);
@@ -73,7 +98,7 @@ schedule.scheduleJob('* * * * *', () => {
       console.log(`⏰ Auto-cancelled no-show bookings: ${staleIds.join(', ')}`);
     }
   } catch (err) {
-    console.error('No-show job error:', err.message);
+    console.error('Booking status job error:', err.message);
   }
 });
 

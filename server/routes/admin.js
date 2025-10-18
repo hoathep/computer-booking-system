@@ -676,9 +676,9 @@ router.get('/stats', (req, res) => {
     // Count active bookings (currently running)
     const activeBookings = db.prepare(`
       SELECT COUNT(*) as count FROM bookings 
-      WHERE status IN ('pending', 'active')
-      AND datetime('now') >= start_time 
-      AND datetime('now') <= end_time
+      WHERE status = 'active'
+      AND datetime('now') >= datetime(start_time) 
+      AND datetime('now') <= datetime(end_time)
     `).get();
     
     // Count today's bookings

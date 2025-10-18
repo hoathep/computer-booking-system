@@ -89,20 +89,20 @@ export default function MyBookings() {
     
     // Determine actual status based on time
     let actualStatus = status
-    if (status === 'pending' && now >= start && now <= end) {
+    if (status === 'booked' && now >= start && now <= end) {
       actualStatus = 'active'
     } else if (status === 'active' && now > end) {
       actualStatus = 'completed'
     }
     
     const statusConfig = {
-      pending: { bg: 'bg-blue-100', text: 'text-blue-700', label: t('bookings.booked'), icon: CheckCircle },
+      booked: { bg: 'bg-blue-100', text: 'text-blue-700', label: t('bookings.booked'), icon: CheckCircle },
       active: { bg: 'bg-green-100', text: 'text-green-700', label: t('bookings.active'), icon: CheckCircle },
       completed: { bg: 'bg-gray-100', text: 'text-gray-700', label: t('bookings.completed'), icon: CheckCircle },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: t('bookings.cancelled'), icon: XCircle }
     }
 
-    const config = statusConfig[actualStatus] || statusConfig.pending
+    const config = statusConfig[actualStatus] || statusConfig.booked
     const Icon = config.icon
 
     return (
@@ -219,7 +219,7 @@ export default function MyBookings() {
                     {getStatusBadge(booking.status, booking.start_time, booking.end_time)}
                     
                     {/* Cancel button */}
-                    {(booking.status === 'pending' || booking.status === 'active') && (
+                    {(booking.status === 'booked' || booking.status === 'active') && (
                       <button
                         onClick={() => handleCancelBooking(booking.id)}
                         className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
