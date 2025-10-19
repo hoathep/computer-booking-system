@@ -108,9 +108,6 @@ export default function Login() {
             </Link>
           </div>
 
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-gray-600">
-            <strong>Demo:</strong> admin / admin123 (Admin) | user / user123 (User)
-          </div>
         </div>
       </div>
     </div>
