@@ -16,7 +16,9 @@ import AdminGroups from './pages/admin/AdminGroups'
 import AdminTranslations from './pages/admin/AdminTranslations'
 import AdminReports from './pages/admin/AdminReports'
 import AdminEmailServer from './pages/admin/AdminEmailServer'
+import AdminEmailTemplates from './pages/admin/AdminEmailTemplates'
 import AdminFooterSettings from './pages/admin/AdminFooterSettings'
+import AdminAISettings from './pages/admin/AdminAISettings'
 import Layout from './components/Layout'
 import AdminLayout from './components/AdminLayout'
 import './i18n'
@@ -48,6 +50,8 @@ function App() {
               <Route path="reports" element={<AdminReports />} />
               <Route path="translations" element={<AdminTranslations />} />
               <Route path="email-server" element={<AdminEmailServer />} />
+              <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="ai-settings" element={<AdminAISettings />} />
               <Route path="footer" element={<AdminFooterSettings />} />
             </Route>
           </Routes>

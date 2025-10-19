@@ -55,7 +55,8 @@ export default function Computers() {
 
   const fetchComputers = async () => {
     try {
-      const response = await axios.get('/api/computers')
+      const dateStr = selectedDate.toISOString().split('T')[0]
+      const response = await axios.get(`/api/computers?date=${dateStr}`)
       setComputers(response.data)
     } catch (error) {
       console.error('Failed to fetch computers:', error)
@@ -121,8 +122,8 @@ export default function Computers() {
   // Sort computers: booked first, then by status
   const sortedComputers = [...computers].sort((a, b) => {
     // First: booked computers (in_use or booked) - these go to top
-    if ((a.status === 'in_use' || a.status === 'booked') && !(b.status === 'in_use' || b.status === 'booked')) return -1
-    if (!(a.status === 'in_use' || a.status === 'booked') && (b.status === 'in_use' || b.status === 'booked')) return 1
+    if ((a.status === 'in_use' || a.status === 'booked' || a.status === 'partially_available') && !(b.status === 'in_use' || b.status === 'booked' || b.status === 'partially_available')) return -1
+    if (!(a.status === 'in_use' || a.status === 'booked' || a.status === 'partially_available') && (b.status === 'in_use' || b.status === 'booked' || b.status === 'partially_available')) return 1
     
     // Second: maintenance and disabled
     if ((a.status === 'maintenance' || a.status === 'disabled') && !(b.status === 'maintenance' || b.status === 'disabled')) return 1
@@ -427,17 +428,17 @@ export default function Computers() {
                       computer.status === 'maintenance' ? 'bg-orange-100' :
                       computer.status === 'disabled' ? 'bg-gray-100' :
                       computer.status === 'in_use' ? 'bg-red-100' : 
-                      computer.status === 'booked' ? 'bg-blue-100' : 
-                      getBusinessHoursStatus(computer) === 'full' ? 'bg-purple-100' :
-                      getBusinessHoursStatus(computer) === 'partial' ? 'bg-blue-100' : 'bg-green-100'
+                      computer.status === 'booked' ? 'bg-blue-100' :
+                      computer.status === 'partially_available' ? 'bg-yellow-100' :
+                      'bg-green-100'
                     }`}>
                       <Monitor className={`h-4 w-4 ${
                         computer.status === 'maintenance' ? 'text-orange-600' :
                         computer.status === 'disabled' ? 'text-gray-600' :
                         computer.status === 'in_use' ? 'text-red-600' : 
-                        computer.status === 'booked' ? 'text-blue-600' : 
-                        getBusinessHoursStatus(computer) === 'full' ? 'text-purple-600' :
-                        getBusinessHoursStatus(computer) === 'partial' ? 'text-blue-600' : 'text-green-600'
+                        computer.status === 'booked' ? 'text-blue-600' :
+                        computer.status === 'partially_available' ? 'text-yellow-600' :
+                        'text-green-600'
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -446,9 +447,8 @@ export default function Computers() {
                         {computer.status === 'maintenance' ? t('computers.maintenance') :
                          computer.status === 'disabled' ? t('computers.disabled') :
                          computer.status === 'in_use' ? t('computers.inUse') :
-                         computer.status === 'booked' ? t('computers.partiallyAvailable') :
-                         getBusinessHoursStatus(computer) === 'full' ? t('computers.bookedFull') :
-                         getBusinessHoursStatus(computer) === 'partial' ? t('computers.partiallyAvailable') :
+                         computer.status === 'booked' ? t('computers.booked') :
+                         computer.status === 'partially_available' ? t('computers.partiallyAvailable') :
                          t('computers.available')}
                       </div>
                     </div>

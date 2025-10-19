@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Streaming Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .chat-container {
+            height: 400px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            background: #fafafa;
+            margin-bottom: 15px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background: #e9ecef;
+            color: #333;
+            margin-right: 20%;
+        }
+        .streaming {
+            position: relative;
+        }
+        .streaming::after {
+            content: '▋';
+            color: #007bff;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Assistant Streaming Demo</h1>
+        <p>Demo tính năng streaming response từ AI Assistant</p>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                <strong>AI Assistant:</strong> Xin chào! Tôi là trợ lý AI chuyên về Computer Booking System. Bạn có thể hỏi tôi về cách sử dụng hệ thống, tính năng, hoặc khắc phục sự cố.
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Nhập câu hỏi của bạn..." />
+            <button id="sendButton" onclick="sendMessage()">Gửi</button>
+        </div>
+        
+        <div class="status" id="status">Sẵn sàng</div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const status = document.getElementById('status');
+
+        function addMessage(content, isUser = false, isStreaming = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'} ${isStreaming ? 'streaming' : ''}`;
+            
+            const label = isUser ? 'Bạn:' : 'AI Assistant:';
+            messageDiv.innerHTML = `<strong>${label}</strong> ${content}`;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        function updateStatus(message, type = 'connected') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, true);
+            messageInput.value = '';
+            sendButton.disabled = true;
+            updateStatus('Đang gửi...', 'connected');
+
+            // Add streaming bot message
+            const botMessageDiv = addMessage('', false, true);
+
+            try {
+                const response = await fetch('http://localhost:3000/api/ai/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        context: 'computer-booking-system'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                updateStatus('Đang nhận phản hồi...', 'connected');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') {
+                                // Remove streaming indicator
+                                botMessageDiv.classList.remove('streaming');
+                                updateStatus('Hoàn thành', 'connected');
+                                break;
+                            }
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.content) {
+                                    // Update message content
+                                    const currentContent = botMessageDiv.innerHTML;
+                                    const newContent = currentContent.replace(
+                                        /<strong>AI Assistant:<\/strong> (.*)/,
+                                        `<strong>AI Assistant:</strong> $1${parsed.content}`
+                                    );
+                                    botMessageDiv.innerHTML = newContent;
+                                }
+                                if (parsed.error) {
+                                    throw new Error(parsed.error);
+                                }
+                            } catch (e) {
+                                // Ignore parsing errors
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                botMessageDiv.innerHTML = `<strong>AI Assistant:</strong> Lỗi: ${error.message}`;
+                botMessageDiv.classList.remove('streaming');
+                updateStatus(`Lỗi: ${error.message}`, 'error');
+            } finally {
+                sendButton.disabled = false;
+            }
+        }
+
+        // Enter key support
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !sendButton.disabled) {
+                sendMessage();
+            }
+        });
+
+        // Test connection on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/health');
+                if (response.ok) {
+                    updateStatus('Kết nối thành công', 'connected');
+                } else {
+                    updateStatus('Server không phản hồi', 'error');
+                }
+            } catch (error) {
+                updateStatus('Không thể kết nối đến server', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

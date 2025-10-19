@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Logo from './Logo'
+import { useTranslation } from 'react-i18next'
 
 export default function Footer() {
+  const { t } = useTranslation()
   const [cfg, setCfg] = useState({ supportEmail: '', phone: '', teamsLink: '' })
 
   useEffect(() => {
@@ -40,14 +42,14 @@ export default function Footer() {
           {/* Right column - Teams link */}
           <div className="text-center md:text-right">
             {cfg.teamsLink && (
-              <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">Chat with us on Teams</a>
+              <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">{t('admin.footer.teamsChat')}</a>
             )}
           </div>
         </div>
         
-        {/* Copyright line - centered at bottom */}
-        <div className="text-sm text-gray-500 text-center pt-2">
-        DENSO Viet Nam Design Center © 2025 - All rights reserved
+        {/* Copyright line - shift left by 2cm */}
+        <div className="text-sm text-gray-500 text-center pt-2" style={{ position: 'relative', left: '-2cm' }}>
+          DENSO Viet Nam Design Center © 2025 - All rights reserved
         </div>
       </div>
     </footer>

@@ -60,6 +60,185 @@ router.post('/settings/smtp', (req, res) => {
   }
 });
 
+// --- EMAIL TEMPLATES ---
+router.get('/email-templates', (req, res) => {
+  try {
+    const templates = db.prepare(`
+      SELECT id, name, subject, body, variables, is_active, created_at, updated_at
+      FROM email_templates
+      ORDER BY name
+    `).all();
+    
+    // Parse variables JSON
+    const parsedTemplates = templates.map(template => ({
+      ...template,
+      variables: template.variables ? JSON.parse(template.variables) : []
+    }));
+    
+    res.json(parsedTemplates);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/email-templates/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const template = db.prepare(`
+      SELECT id, name, subject, body, variables, is_active, created_at, updated_at
+      FROM email_templates
+      WHERE id = ?
+    `).get(id);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Email template not found' });
+    }
+    
+    // Parse variables JSON
+    template.variables = template.variables ? JSON.parse(template.variables) : [];
+    
+    res.json(template);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/email-templates', (req, res) => {
+  try {
+    const { name, subject, body, variables, is_active } = req.body;
+    
+    if (!name || !subject || !body) {
+      return res.status(400).json({ error: 'Name, subject, and body are required' });
+    }
+    
+    const variablesJson = variables ? JSON.stringify(variables) : null;
+    
+    const result = db.prepare(`
+      INSERT INTO email_templates (name, subject, body, variables, is_active)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(name, subject, body, variablesJson, is_active ? 1 : 0);
+    
+    res.status(201).json({
+      message: 'Email template created successfully',
+      id: result.lastInsertRowid
+    });
+  } catch (error) {
+    if (error.message.includes('UNIQUE constraint failed')) {
+      res.status(400).json({ error: 'Template name already exists' });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+router.put('/email-templates/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, subject, body, variables, is_active } = req.body;
+    
+    if (!name || !subject || !body) {
+      return res.status(400).json({ error: 'Name, subject, and body are required' });
+    }
+    
+    const variablesJson = variables ? JSON.stringify(variables) : null;
+    
+    const result = db.prepare(`
+      UPDATE email_templates
+      SET name = ?, subject = ?, body = ?, variables = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(name, subject, body, variablesJson, is_active ? 1 : 0, id);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Email template not found' });
+    }
+    
+    res.json({ message: 'Email template updated successfully' });
+  } catch (error) {
+    if (error.message.includes('UNIQUE constraint failed')) {
+      res.status(400).json({ error: 'Template name already exists' });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+router.delete('/email-templates/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = db.prepare(`
+      DELETE FROM email_templates WHERE id = ?
+    `).run(id);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Email template not found' });
+    }
+    
+    res.json({ message: 'Email template deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/email-templates/:id/test', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { testData } = req.body;
+    
+    const template = db.prepare(`
+      SELECT name, subject, body, variables
+      FROM email_templates
+      WHERE id = ?
+    `).get(id);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Email template not found' });
+    }
+    
+    // Parse variables and test data
+    const variables = template.variables ? JSON.parse(template.variables) : [];
+    const testDataObj = testData || {};
+    
+    // Replace variables in subject and body
+    let testSubject = template.subject;
+    let testBody = template.body;
+    
+    variables.forEach(variable => {
+      const value = testDataObj[variable] || `{{${variable}}}`;
+      testSubject = testSubject.replace(new RegExp(`{{${variable}}}`, 'g'), value);
+      testBody = testBody.replace(new RegExp(`{{${variable}}}`, 'g'), value);
+    });
+    
+    res.json({
+      message: 'Email template test successful',
+      testSubject,
+      testBody,
+      variables
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/email-templates/send-test', async (req, res) => {
+  try {
+    const { templateName, to, testData } = req.body;
+    
+    if (!templateName || !to) {
+      return res.status(400).json({ error: 'Template name and recipient email are required' });
+    }
+    
+    const { default: EmailService } = await import('../services/emailService.js');
+    const emailService = new EmailService();
+    
+    await emailService.sendEmail(to, templateName, testData || {});
+    
+    res.json({ message: 'Test email sent successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- FOOTER SETTINGS ---
 router.get('/settings/footer', (req, res) => {
   try {
@@ -1401,6 +1580,188 @@ router.get('/test', (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// AI Settings endpoints
+// Get AI settings
+router.get('/ai-settings', (req, res) => {
+  try {
+    const settings = db.prepare(`
+      SELECT key, value FROM settings 
+      WHERE key LIKE 'ai_%'
+    `).all();
+    
+    const config = {};
+    settings.forEach(setting => {
+      const key = setting.key.replace('ai_', '');
+      try {
+        // Parse JSON for arrays and objects
+        if (key === 'adminQuestions' || key === 'userQuestions') {
+          config[key] = JSON.parse(setting.value);
+        } else if (key === 'fallbackEnabled') {
+          config[key] = setting.value === 'true';
+        } else if (key === 'openaiMaxTokens' || key === 'localAiMaxTokens') {
+          config[key] = parseInt(setting.value) || 1000;
+        } else if (key === 'openaiTemperature' || key === 'localAiTemperature') {
+          config[key] = parseFloat(setting.value) || 0.7;
+        } else {
+          config[key] = setting.value;
+        }
+      } catch {
+        config[key] = setting.value;
+      }
+    });
+    
+    // Default values if not found
+    const defaultConfig = {
+      provider: 'localai',
+      openaiApiKey: '',
+      openaiBaseUrl: 'https://api.openai.com/v1',
+      openaiModel: 'gpt-3.5-turbo',
+      openaiMaxTokens: 1000,
+      openaiTemperature: 0.7,
+      localAiUrl: 'http://10.73.135.29:8000/v1',
+      localAiApiKey: '',
+      localAiModel: '/home/aidata/h100/gpt-oss-120b/',
+      localAiMaxTokens: 1000,
+      localAiTemperature: 0.7,
+      fallbackEnabled: true,
+      fallbackMessage: 'Xin lỗi, AI Assistant tạm thời không khả dụng. Vui lòng thử lại sau.',
+      adminQuestions: [
+        "Cách quản lý users?",
+        "Hướng dẫn cấu hình email?",
+        "Cách xuất báo cáo?",
+        "Quản lý nhóm người dùng?",
+        "Khắc phục sự cố admin?"
+      ],
+      userQuestions: [
+        "Cách đặt máy tính?",
+        "Làm sao hủy lịch đặt?",
+        "Tính năng admin có gì?",
+        "Cài đặt hệ thống như thế nào?",
+        "Khắc phục sự cố?"
+      ]
+    };
+    
+    res.json({ ...defaultConfig, ...config });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save AI settings
+router.post('/ai-settings', (req, res) => {
+  try {
+    const {
+      provider,
+      openaiApiKey,
+      openaiBaseUrl,
+      openaiModel,
+      openaiMaxTokens,
+      openaiTemperature,
+      localAiUrl,
+      localAiApiKey,
+      localAiModel,
+      localAiMaxTokens,
+      localAiTemperature,
+      fallbackEnabled,
+      fallbackMessage,
+      adminQuestions,
+      userQuestions
+    } = req.body;
+    
+    const settings = [
+      { key: 'ai_provider', value: provider },
+      { key: 'ai_openaiApiKey', value: openaiApiKey },
+      { key: 'ai_openaiBaseUrl', value: openaiBaseUrl },
+      { key: 'ai_openaiModel', value: openaiModel },
+      { key: 'ai_openaiMaxTokens', value: String(openaiMaxTokens) },
+      { key: 'ai_openaiTemperature', value: String(openaiTemperature) },
+      { key: 'ai_localAiUrl', value: localAiUrl },
+      { key: 'ai_localAiApiKey', value: localAiApiKey },
+      { key: 'ai_localAiModel', value: localAiModel },
+      { key: 'ai_localAiMaxTokens', value: String(localAiMaxTokens) },
+      { key: 'ai_localAiTemperature', value: String(localAiTemperature) },
+      { key: 'ai_fallbackEnabled', value: String(fallbackEnabled) },
+      { key: 'ai_fallbackMessage', value: fallbackMessage },
+      { key: 'ai_adminQuestions', value: JSON.stringify(adminQuestions) },
+      { key: 'ai_userQuestions', value: JSON.stringify(userQuestions) }
+    ];
+    
+    const upsert = db.prepare(`
+      INSERT OR REPLACE INTO settings (key, value) 
+      VALUES (?, ?)
+    `);
+    
+    settings.forEach(({ key, value }) => {
+      upsert.run(key, value);
+    });
+    
+    res.json({ message: 'AI settings saved successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test AI connection
+router.post('/ai-settings/test', async (req, res) => {
+  try {
+    const { provider, openaiApiKey, openaiBaseUrl, openaiModel, localAiUrl, localAiApiKey, localAiModel } = req.body;
+    
+    if (provider === 'openai') {
+      if (!openaiApiKey) {
+        return res.status(400).json({ error: 'OpenAI API Key is required' });
+      }
+      
+      // Test OpenAI connection
+      const response = await fetch(`${openaiBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: openaiModel,
+          messages: [{ role: 'user', content: 'Test connection' }],
+          max_tokens: 10
+        })
+      });
+      
+      if (response.ok) {
+        res.json({ message: 'OpenAI connection successful' });
+      } else {
+        res.status(400).json({ error: 'OpenAI API error: ' + response.statusText });
+      }
+    } else if (provider === 'localai') {
+      if (!localAiUrl) {
+        return res.status(400).json({ error: 'Local AI URL is required' });
+      }
+      
+      // Test Local AI connection
+      const response = await fetch(`${localAiUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localAiApiKey && { 'Authorization': `Bearer ${localAiApiKey}` })
+        },
+        body: JSON.stringify({
+          model: localAiModel,
+          messages: [{ role: 'user', content: 'Test connection' }],
+          max_tokens: 10
+        })
+      });
+      
+      if (response.ok) {
+        res.json({ message: 'vLLM connection successful' });
+      } else {
+        res.status(400).json({ error: 'vLLM API error: ' + response.statusText });
+      }
+    } else {
+      res.status(400).json({ error: 'Invalid provider' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Connection test failed: ' + error.message });
   }
 });
 

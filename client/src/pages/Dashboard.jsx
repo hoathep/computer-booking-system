@@ -15,6 +15,9 @@ export default function Dashboard() {
     totalBookings: 0,
     totalComputers: 0,
     availableComputers: 0,
+    partiallyAvailableComputers: 0,
+    bookedComputers: 0,
+    inUseComputers: 0,
     todayBookedHours: 0,
     monthUsedHours: 0
   })
@@ -42,6 +45,9 @@ export default function Dashboard() {
         totalBookings: allRes.data.length,
         totalComputers: availabilityRes.data.totalComputers,
         availableComputers: availabilityRes.data.availableComputers,
+        partiallyAvailableComputers: availabilityRes.data.partiallyAvailableComputers || 0,
+        bookedComputers: availabilityRes.data.bookedComputers || 0,
+        inUseComputers: availabilityRes.data.inUseComputers || 0,
         todayBookedHours: timeStatsRes.data.todayBookedHours,
         monthUsedHours: timeStatsRes.data.monthUsedHours
       })
@@ -68,7 +74,7 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold text-gray-900">
           {t('dashboard.welcome')}, {user?.fullname}!
         </h1>
-        <p className="text-gray-600 mt-1">Chào mừng bạn đến với hệ thống đặt máy tính</p>
+        <p className="text-gray-600 mt-1">{t('dashboard.subtitle')}</p>
       </div>
 
       {message && (
@@ -91,11 +97,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">{t('dashboard.activeBookings')}</p>
-              <p className="text-3xl font-bold text-primary-600">{stats.activeBookings.length}</p>
+            <div className="pt-5">
+              <p className="text-sm font-semibold text-gray-600">{t('dashboard.activeBookings')}</p>
+              <p className="text-2xl font-bold text-primary-600">{stats.activeBookings.length}</p>
             </div>
-            <div className="p-3 bg-primary-100 rounded-lg">
+            <div className="p-3 bg-primary-100 rounded-lg mt-3">
               <Monitor className="h-8 w-8 text-primary-600" />
             </div>
           </div>
@@ -104,8 +110,26 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">{t('dashboard.availableComputers') || 'Tổng số máy đang rảnh'}</p>
-              <p className="text-3xl font-bold text-green-600">{stats.availableComputers}/{stats.totalComputers}</p>
+              <p className="text-sm font-semibold text-gray-600">{t('dashboard.availableComputers') || 'Trạng thái máy tính hôm nay'}</p>
+              <div className="flex items-center space-x-4 mt-2">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{stats.availableComputers}</p>
+                  <p className="text-xs text-gray-500">{t('dashboard.computerStatus.available')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-yellow-600">{stats.partiallyAvailableComputers}</p>
+                  <p className="text-xs text-gray-500">{t('dashboard.computerStatus.partiallyAvailable')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-600">{stats.bookedComputers}</p>
+                  <p className="text-xs text-gray-500">{t('dashboard.computerStatus.booked')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-red-600">{stats.inUseComputers}</p>
+                  <p className="text-xs text-gray-500">{t('dashboard.computerStatus.inUse')}</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">{t('dashboard.computerStatus.total')}: {stats.totalComputers} {t('dashboard.computerStatus.machines')}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
               <TrendingUp className="h-8 w-8 text-green-600" />
@@ -116,8 +140,8 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">{t('dashboard.todayBookedHours') || 'Giờ đăng ký hôm nay'}</p>
-              <p className="text-3xl font-bold text-orange-600">{stats.todayBookedHours}h</p>
+              <p className="text-sm font-semibold text-gray-600">{t('dashboard.todayBookedHours') || 'Giờ đăng ký hôm nay'}</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.todayBookedHours}h</p>
               <p className="text-xs text-gray-500 mt-1">
                 {t('dashboard.monthUsedHours') || 'Đã sử dụng tháng này'}: {stats.monthUsedHours}h
               </p>
@@ -229,7 +253,7 @@ export default function Dashboard() {
                   if (sortBy === 'available') return computer.status === 'available'
                   if (sortBy === 'rating') return computer.rating > 0
                   return true
-                }).length} máy
+                }).length} {t('dashboard.computerStatus.machines')}
               </span>
             </div>
             <div className="flex gap-2 flex-shrink-0">

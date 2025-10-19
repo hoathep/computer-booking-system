@@ -4,30 +4,91 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get computer availability stats
+// Get computer availability stats for current date
 router.get('/availability-stats', authenticateToken, (req, res) => {
   try {
+    const { date } = req.query;
+    
+    // If no date provided, use current date
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    
     // Count total computers (excluding maintenance and disabled)
     const totalComputers = db.prepare(`
       SELECT COUNT(*) as count FROM computers 
       WHERE status NOT IN ('maintenance', 'disabled')
     `).get();
     
-    // Count available computers (not in use, not booked, not maintenance/disabled)
-    const availableComputers = db.prepare(`
-      SELECT COUNT(*) as count FROM computers c
+  // Count available computers using the same logic as the main endpoint
+  const computers = db.prepare(`
+      SELECT c.*,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status IN ('booked', 'active')
+          AND DATE(b.start_time) = DATE(?)
+        ) as has_bookings_on_date,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status IN ('booked', 'active')
+          AND b.start_time <= datetime('now') AND b.end_time >= datetime('now')
+        ) as is_currently_in_use,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status = 'booked'
+          AND b.start_time > datetime('now')
+          AND DATE(b.start_time) = DATE(?)
+        ) as is_booked_future_on_date,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status IN ('booked', 'active')
+          AND b.start_time <= ? AND b.end_time >= ?
+        ) as has_active_bookings_in_timeframe
+      FROM computers c
       WHERE c.status NOT IN ('maintenance', 'disabled')
-      AND NOT EXISTS (
-        SELECT 1 FROM bookings b 
-        WHERE b.computer_id = c.id 
-        AND b.status IN ('booked', 'active')
-        AND datetime('now') < b.end_time
-      )
-    `).get();
+      ORDER BY c.name
+    `).all(targetDate, targetDate, `${targetDate} 00:00:00`, `${targetDate} 23:59:59`);
+
+    // Calculate status for each computer and count available ones
+    let availableCount = 0;
+    let partiallyAvailableCount = 0;
+    let bookedCount = 0;
+    let inUseCount = 0;
+
+    computers.forEach(computer => {
+      let status;
+      
+      if (computer.is_currently_in_use > 0) {
+        status = 'in_use';
+        inUseCount++;
+      } else if (computer.has_active_bookings_in_timeframe > 0) {
+        status = 'partially_available';
+        partiallyAvailableCount++;
+      } else if (computer.is_booked_future_on_date > 0) {
+        status = 'booked';
+        bookedCount++;
+      } else if (computer.has_bookings_on_date > 0) {
+        status = 'partially_available';
+        partiallyAvailableCount++;
+      } else {
+        status = 'available';
+        availableCount++;
+      }
+    });
 
     res.json({
       totalComputers: totalComputers.count,
-      availableComputers: availableComputers.count
+      availableComputers: availableCount,
+      partiallyAvailableComputers: partiallyAvailableCount,
+      bookedComputers: bookedCount,
+      inUseComputers: inUseCount,
+      date: targetDate
     });
   } catch (error) {
     console.error('Availability stats error:', error);
@@ -83,47 +144,88 @@ router.get('/hot', authenticateToken, (req, res) => {
 // Get all computers with availability status
 router.get('/', authenticateToken, (req, res) => {
   try {
-    const now = new Date().toISOString();
+    const { date } = req.query;
+    
+    // If no date provided, use current date
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    
+    // Get start and end of the target date
+    const startOfDay = `${targetDate} 00:00:00`;
+    const endOfDay = `${targetDate} 23:59:59`;
     
     const computers = db.prepare(`
-      SELECT 
-        c.*,
+      SELECT c.*,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
-          AND b.status = 'active'
-          AND datetime('now') BETWEEN b.start_time AND b.end_time
+          AND b.status IN ('booked', 'active')
+          AND DATE(b.start_time) = DATE(?)
+        ) as has_bookings_on_date,
+        (
+          SELECT COUNT(*) 
+          FROM bookings b 
+          WHERE b.computer_id = c.id 
+          AND b.status IN ('booked', 'active')
+          AND b.start_time <= datetime('now') AND b.end_time >= datetime('now')
         ) as is_currently_in_use,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status = 'booked'
-          AND datetime('now') < b.start_time
-        ) as is_booked_future,
+          AND b.start_time > datetime('now')
+          AND DATE(b.start_time) = DATE(?)
+        ) as is_booked_future_on_date,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status IN ('booked', 'active')
-          AND datetime('now') BETWEEN b.start_time AND b.end_time
-        ) as is_currently_booked
+          AND b.start_time <= ? AND b.end_time >= ?
+        ) as has_active_bookings_in_timeframe
       FROM computers c
       ORDER BY c.name
-    `).all();
+    `).all(targetDate, targetDate, startOfDay, endOfDay);
 
-    // Add computed status for easier frontend handling
-    const computersWithStatus = computers.map(computer => ({
-      ...computer,
-      status: computer.status === 'maintenance' ? 'maintenance' :
-              computer.status === 'disabled' ? 'disabled' :
-              computer.is_currently_in_use > 0 ? 'in_use' : 
-              computer.is_booked_future > 0 ? 'booked' : 'available'
-    }));
+    // Calculate status for each computer
+    const computersWithStatus = computers.map(computer => {
+      let status;
+      
+      if (computer.status === 'maintenance') {
+        status = 'maintenance';
+      } else if (computer.status === 'disabled') {
+        status = 'disabled';
+      } else if (computer.is_currently_in_use > 0) {
+        // Machine is currently being used
+        status = 'in_use';
+      } else if (computer.has_active_bookings_in_timeframe > 0) {
+        // Machine has active bookings in the selected timeframe
+        status = 'partially_available';
+      } else if (computer.is_booked_future_on_date > 0) {
+        // Machine has future bookings on this date
+        status = 'booked';
+      } else if (computer.has_bookings_on_date > 0) {
+        // Machine has some bookings on this date but not currently in use
+        status = 'partially_available';
+      } else {
+        // No bookings on this date
+        status = 'available';
+      }
+      
+      return {
+        ...computer,
+        status,
+        has_bookings_on_date: computer.has_bookings_on_date > 0,
+        is_currently_in_use: computer.is_currently_in_use > 0,
+        is_booked_future_on_date: computer.is_booked_future_on_date > 0,
+        has_active_bookings_in_timeframe: computer.has_active_bookings_in_timeframe > 0
+      };
+    });
 
     res.json(computersWithStatus);
   } catch (error) {
+    console.error('Get computers error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -171,6 +273,82 @@ router.get('/:id/bookings', authenticateToken, (req, res) => {
     const bookings = db.prepare(query).all(...params);
     res.json(bookings);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get available time slots for a computer on a specific date
+router.get('/:id/available-slots', authenticateToken, (req, res) => {
+  try {
+    const { date } = req.query;
+    const computerId = req.params.id;
+    
+    if (!date) {
+      return res.status(400).json({ error: 'Date parameter is required' });
+    }
+    
+    // Get computer info
+    const computer = db.prepare('SELECT * FROM computers WHERE id = ?').get(computerId);
+    if (!computer) {
+      return res.status(404).json({ error: 'Computer not found' });
+    }
+    
+    // Generate all possible 30-minute slots for the day (8 AM to 10 PM)
+    const slots = [];
+    const startHour = 8;
+    const endHour = 22;
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const slotStart = new Date(`${date}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`);
+        const slotEnd = new Date(slotStart.getTime() + 30 * 60000); // Add 30 minutes
+        
+        // Check if this slot is available
+        const existingBooking = db.prepare(`
+          SELECT COUNT(*) as count FROM bookings 
+          WHERE computer_id = ? 
+          AND status IN ('booked', 'active')
+          AND start_time < ? AND end_time > ?
+        `).get(computerId, slotEnd.toISOString(), slotStart.toISOString());
+        
+        const isAvailable = existingBooking.count === 0;
+        
+        slots.push({
+          start_time: slotStart.toISOString(),
+          end_time: slotEnd.toISOString(),
+          available: isAvailable,
+          display_time: slotStart.toLocaleTimeString('vi-VN', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          })
+        });
+      }
+    }
+    
+    // Get existing bookings for this computer on this date
+    const bookings = db.prepare(`
+      SELECT b.*, u.username, u.fullname
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.computer_id = ?
+      AND b.status IN ('booked', 'active')
+      AND DATE(b.start_time) = ?
+      ORDER BY b.start_time
+    `).all(computerId, date);
+    
+    res.json({
+      computer: {
+        id: computer.id,
+        name: computer.name,
+        location: computer.location
+      },
+      date,
+      slots,
+      bookings
+    });
+  } catch (error) {
+    console.error('Get available slots error:', error);
     res.status(500).json({ error: error.message });
   }
 });

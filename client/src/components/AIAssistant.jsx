@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, X, HelpCircle } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
   const { t } = useTranslation();
@@ -16,6 +18,7 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState([]);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -33,6 +36,50 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
     }
   }, [isOpen]);
 
+  // Load suggested questions from API
+  useEffect(() => {
+    const loadSuggestedQuestions = async () => {
+      try {
+        console.log('🔄 Loading suggested questions...');
+        const response = await fetch(`/api/ai/suggestions?isAdmin=${isAdmin}`);
+        console.log('Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('API data:', data);
+          const questions = data.questions || [];
+          console.log('Questions to set:', questions);
+          setSuggestedQuestions(questions);
+        } else {
+          console.log('API failed, using fallback');
+          throw new Error(`API failed with status ${response.status}`);
+        }
+      } catch (error) {
+        console.error('Failed to load suggested questions:', error);
+        // Fallback to default questions
+        const fallbackQuestions = isAdmin ? [
+          "Cách quản lý users?",
+          "Hướng dẫn cấu hình email?",
+          "Cách xuất báo cáo?",
+          "Quản lý nhóm người dùng?",
+          "Khắc phục sự cố admin?"
+        ] : [
+          t('ai.suggestions.howToBook'),
+          t('ai.suggestions.howToCancel'),
+          t('ai.suggestions.adminFeatures'),
+          t('ai.suggestions.installation'),
+          t('ai.suggestions.troubleshooting')
+        ];
+        console.log('Using fallback questions:', fallbackQuestions);
+        setSuggestedQuestions(fallbackQuestions);
+      }
+    };
+
+    if (isOpen) {
+      loadSuggestedQuestions();
+    }
+  }, [isOpen, isAdmin, t]);
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -47,8 +94,20 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
     setInputMessage('');
     setIsLoading(true);
 
+    // Create bot message placeholder for streaming
+    const botMessageId = Date.now() + 1;
+    const botMessage = {
+      id: botMessageId,
+      type: 'bot',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true
+    };
+
+    setMessages(prev => [...prev, botMessage]);
+
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/ai/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,25 +123,61 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
         throw new Error('Failed to get AI response');
       }
 
-      const data = await response.json();
-      
-      const botMessage = {
-        id: Date.now() + 1,
-        type: 'bot',
-        content: data.response,
-        timestamp: new Date()
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-      setMessages(prev => [...prev, botMessage]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              // Mark streaming as complete
+              setMessages(prev => prev.map(msg => 
+                msg.id === botMessageId 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              ));
+              break;
+            }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                // Update the streaming message
+                setMessages(prev => prev.map(msg => 
+                  msg.id === botMessageId 
+                    ? { ...msg, content: msg.content + parsed.content }
+                    : msg
+                ));
+              }
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              // Ignore parsing errors for incomplete chunks
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('AI Assistant Error:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: 'bot',
-        content: t('ai.error'),
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // Update the streaming message with error
+      setMessages(prev => prev.map(msg => 
+        msg.id === botMessageId 
+          ? { 
+              ...msg, 
+              content: t('ai.error'),
+              isStreaming: false
+            }
+          : msg
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -102,19 +197,7 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
     });
   };
 
-  const suggestedQuestions = isAdmin ? [
-    "Cách quản lý users?",
-    "Hướng dẫn cấu hình email?",
-    "Cách xuất báo cáo?",
-    "Quản lý nhóm người dùng?",
-    "Khắc phục sự cố admin?"
-  ] : [
-    t('ai.suggestions.howToBook'),
-    t('ai.suggestions.howToCancel'),
-    t('ai.suggestions.adminFeatures'),
-    t('ai.suggestions.installation'),
-    t('ai.suggestions.troubleshooting')
-  ];
+  // suggestedQuestions is now loaded from API in useEffect
 
   const handleSuggestionClick = (suggestion) => {
     setInputMessage(suggestion);
@@ -180,7 +263,39 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        // Custom styling for markdown elements
+                        h1: ({children}) => <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{children}</h1>,
+                        h2: ({children}) => <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2">{children}</h2>,
+                        h3: ({children}) => <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</h3>,
+                        p: ({children}) => <p className="mb-2 text-gray-700 dark:text-gray-300">{children}</p>,
+                        ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                        li: ({children}) => <li className="text-gray-700 dark:text-gray-300">{children}</li>,
+                        table: ({children}) => <div className="overflow-x-auto mb-2"><table className="min-w-full border border-gray-300 dark:border-gray-600">{children}</table></div>,
+                        thead: ({children}) => <thead className="bg-gray-50 dark:bg-gray-700">{children}</thead>,
+                        tbody: ({children}) => <tbody className="bg-white dark:bg-gray-800">{children}</tbody>,
+                        tr: ({children}) => <tr className="border-b border-gray-200 dark:border-gray-600">{children}</tr>,
+                        th: ({children}) => <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{children}</th>,
+                        td: ({children}) => <td className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{children}</td>,
+                        code: ({children}) => <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                        pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs overflow-x-auto">{children}</pre>,
+                        blockquote: ({children}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-400">{children}</blockquote>,
+                        strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+                        em: ({children}) => <em className="italic text-gray-600 dark:text-gray-400">{children}</em>,
+                        hr: () => <hr className="my-3 border-gray-300 dark:border-gray-600" />,
+                        a: ({href, children}) => <a href={href} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                    {message.isStreaming && (
+                      <span className="inline-block w-2 h-4 bg-blue-500 ml-1 animate-pulse"></span>
+                    )}
+                  </div>
                   <p className="text-xs mt-1 opacity-70">
                     {formatTime(message.timestamp)}
                   </p>
@@ -189,7 +304,7 @@ const AIAssistant = ({ isOpen, onClose, isAdmin = false }) => {
             </div>
           ))}
           
-          {isLoading && (
+          {isLoading && !messages.some(msg => msg.isStreaming) && (
             <div className="flex justify-start">
               <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">

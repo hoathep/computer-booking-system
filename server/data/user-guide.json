@@ -1,0 +1,330 @@
+{
+  "systemInfo": {
+    "name": "Computer Booking System",
+    "version": "Beta 0.2",
+    "description": {
+      "vi": "Hệ thống quản lý đặt máy tính trực tuyến cho phòng lab, thư viện, trung tâm đào tạo",
+      "en": "Online computer booking management system for labs, libraries, and training centers",
+      "ja": "ラボ、図書館、トレーニングセンター向けのオンラインコンピューター予約管理システム"
+    },
+    "languages": ["Tiếng Việt", "English", "日本語"]
+  },
+  
+  "userGuide": {
+    "gettingStarted": {
+      "title": {
+        "vi": "Bắt đầu sử dụng",
+        "en": "Getting Started",
+        "ja": "使い始める"
+      },
+      "steps": [
+        {
+          "step": 1,
+          "title": {
+            "vi": "Đăng ký tài khoản",
+            "en": "Create Account",
+            "ja": "アカウント作成"
+          },
+          "description": {
+            "vi": "Truy cập trang đăng ký, nhập thông tin cá nhân và tạo mật khẩu",
+            "en": "Go to the registration page, enter your personal information and create a password",
+            "ja": "登録ページにアクセスし、個人情報を入力してパスワードを作成"
+          },
+          "details": {
+            "vi": "Bạn cần cung cấp họ tên, email và mật khẩu. Email sẽ được dùng để nhận thông báo về lịch đặt máy.",
+            "en": "You need to provide your full name, email and password. Email will be used to receive notifications about your bookings.",
+            "ja": "氏名、メールアドレス、パスワードを提供する必要があります。メールは予約に関する通知を受信するために使用されます。"
+          }
+        },
+        {
+          "step": 2,
+          "title": {
+            "vi": "Đăng nhập hệ thống",
+            "en": "Login to System",
+            "ja": "システムにログイン"
+          },
+          "description": {
+            "vi": "Sử dụng email và mật khẩu để đăng nhập",
+            "en": "Use your email and password to login",
+            "ja": "メールアドレスとパスワードを使用してログイン"
+          },
+          "details": {
+            "vi": "Sau khi đăng nhập, bạn sẽ thấy dashboard với thông tin tổng quan về tài khoản.",
+            "en": "After logging in, you will see a dashboard with an overview of your account information.",
+            "ja": "ログイン後、アカウント情報の概要を含むダッシュボードが表示されます。"
+          }
+        },
+        {
+          "step": 3,
+          "title": {
+            "vi": "Xem danh sách máy tính",
+            "en": "View Computer List",
+            "ja": "コンピューター一覧を表示"
+          },
+          "description": {
+            "vi": "Vào mục 'Đặt máy' để xem các máy tính có sẵn",
+            "en": "Go to 'Book Computer' to see available computers",
+            "ja": "「コンピューター予約」に移動して利用可能なコンピューターを表示"
+          },
+          "details": {
+            "vi": "Bạn sẽ thấy danh sách máy với thông tin: tên máy, vị trí, trạng thái (rảnh/bận), và đánh giá từ người dùng khác.",
+            "en": "You will see a list of computers with information: computer name, location, status (available/busy), and ratings from other users.",
+            "ja": "コンピューター名、場所、ステータス（利用可能/使用中）、他のユーザーからの評価などの情報を含むコンピューターリストが表示されます。"
+          }
+        }
+      ]
+    },
+    
+    "bookingProcess": {
+      "title": {
+        "vi": "Cách đặt máy tính",
+        "en": "How to Book a Computer",
+        "ja": "コンピューター予約方法"
+      },
+      "steps": [
+        {
+          "step": 1,
+          "title": {
+            "vi": "Chọn máy tính",
+            "en": "Select Computer",
+            "ja": "コンピューターを選択"
+          },
+          "description": {
+            "vi": "Click vào máy tính bạn muốn sử dụng",
+            "en": "Click on the computer you want to use",
+            "ja": "使用したいコンピューターをクリック"
+          },
+          "details": {
+            "vi": "Máy tính có sẵn sẽ hiển thị màu xanh, máy đã được đặt sẽ hiển thị màu đỏ.",
+            "en": "Available computers will be displayed in green, booked computers will be displayed in red.",
+            "ja": "利用可能なコンピューターは緑色で表示され、予約済みのコンピューターは赤色で表示されます。"
+          }
+        },
+        {
+          "step": 2,
+          "title": {
+            "vi": "Chọn thời gian",
+            "en": "Select Time",
+            "ja": "時間を選択"
+          },
+          "description": {
+            "vi": "Chọn ngày và khung giờ muốn sử dụng",
+            "en": "Select the date and time slot you want to use",
+            "ja": "使用したい日付と時間枠を選択"
+          },
+          "details": {
+            "vi": "Hệ thống hiển thị lịch với các khung giờ 30 phút. Khung giờ trống có thể đặt, khung giờ đã đặt sẽ bị khóa.",
+            "en": "The system displays a calendar with 30-minute time slots. Empty slots can be booked, booked slots will be locked.",
+            "ja": "システムは30分の時間枠でカレンダーを表示します。空の枠は予約可能で、予約済みの枠はロックされます。"
+          }
+        },
+        {
+          "step": 3,
+          "title": {
+            "vi": "Xác nhận đặt lịch",
+            "en": "Confirm Booking",
+            "ja": "予約確認"
+          },
+          "description": {
+            "vi": "Kiểm tra thông tin và nhấn 'Đặt máy'",
+            "en": "Check the information and click 'Book Computer'",
+            "ja": "情報を確認して「コンピューター予約」をクリック"
+          },
+          "details": {
+            "vi": "Hệ thống sẽ kiểm tra xung đột lịch và giới hạn số máy bạn có thể đặt cùng lúc.",
+            "en": "The system will check for schedule conflicts and the limit on how many computers you can book simultaneously.",
+            "ja": "システムはスケジュールの競合と同時に予約できるコンピューター数の制限をチェックします。"
+          }
+        },
+        {
+          "step": 4,
+          "title": {
+            "vi": "Nhận mật khẩu đăng nhập",
+            "en": "Receive Login Password",
+            "ja": "ログインパスワードを受信"
+          },
+          "description": {
+            "vi": "Hệ thống sẽ gửi mật khẩu đăng nhập qua email",
+            "en": "The system will send the login password via email",
+            "ja": "システムがメールでログインパスワードを送信"
+          },
+          "details": {
+            "vi": "Mật khẩu này chỉ dùng để đăng nhập vào máy tính trong thời gian đã đặt.",
+            "en": "This password is only used to login to the computer during the booked time period.",
+            "ja": "このパスワードは予約された時間内にコンピューターにログインするためにのみ使用されます。"
+          }
+        }
+      ]
+    },
+    
+    "managingBookings": {
+      "title": "Quản lý lịch đặt",
+      "features": [
+        {
+          "feature": "Xem lịch đặt",
+          "description": "Vào 'Lịch của tôi' để xem tất cả lịch đã đặt",
+          "details": "Bao gồm: lịch đang chờ, đang sử dụng, đã hoàn thành và đã hủy."
+        },
+        {
+          "feature": "Hủy lịch đặt",
+          "description": "Có thể hủy lịch trước khi bắt đầu",
+          "details": "Lịch đã bắt đầu không thể hủy. Hủy lịch sẽ giải phóng máy cho người khác đặt."
+        },
+        {
+          "feature": "Đánh giá máy tính",
+          "description": "Sau khi sử dụng, đánh giá máy từ 1-5 sao",
+          "details": "Đánh giá giúp người khác biết chất lượng máy và ảnh hưởng đến 'Máy Hot'."
+        }
+      ]
+    },
+    
+    "commonTasks": {
+      "title": "Các tác vụ thường gặp",
+      "tasks": [
+        {
+          "task": "Quên mật khẩu",
+          "solution": "Nhấn 'Quên mật khẩu' ở trang đăng nhập, nhập email để nhận link đặt lại mật khẩu mới."
+        },
+        {
+          "task": "Không thể đặt máy",
+          "solution": "Kiểm tra: 1) Máy có đang rảnh không, 2) Bạn có vượt quá giới hạn số máy cùng lúc không, 3) Thời gian đặt có hợp lệ không."
+        },
+        {
+          "task": "Muốn đổi thời gian đặt",
+          "solution": "Hủy lịch cũ và đặt lịch mới với thời gian mong muốn."
+        },
+        {
+          "task": "Không nhận được email mật khẩu",
+          "solution": "Kiểm tra hộp thư spam, hoặc liên hệ admin để kiểm tra cấu hình email."
+        }
+      ]
+    },
+    
+    "adminFeatures": {
+      "title": "Tính năng dành cho Admin",
+      "features": [
+        {
+          "feature": "Quản lý người dùng",
+          "description": "Thêm, sửa, xóa tài khoản người dùng",
+          "details": "Có thể đặt giới hạn số máy mỗi người được đặt cùng lúc, phân nhóm người dùng."
+        },
+        {
+          "feature": "Quản lý máy tính",
+          "description": "Thêm máy mới, cập nhật thông tin máy",
+          "details": "Bao gồm: tên máy, vị trí, IP address, trạng thái (hoạt động/bảo trì/tắt)."
+        },
+        {
+          "feature": "Xem báo cáo",
+          "description": "Thống kê sử dụng, máy hot, thời gian sử dụng",
+          "details": "Xuất báo cáo Excel, xem biểu đồ thống kê theo thời gian."
+        },
+        {
+          "feature": "Cấu hình hệ thống",
+          "description": "Thiết lập email, ngôn ngữ, giới hạn booking",
+          "details": "Cấu hình SMTP để gửi email, quản lý bản dịch đa ngôn ngữ."
+        }
+      ]
+    },
+    
+    "tipsAndTricks": {
+      "title": "Mẹo sử dụng hiệu quả",
+      "tips": [
+        {
+          "tip": "Đặt lịch sớm",
+          "description": "Đặt lịch trước 1-2 ngày để có nhiều lựa chọn thời gian hơn"
+        },
+        {
+          "tip": "Kiểm tra máy Hot",
+          "description": "Xem danh sách máy được đặt nhiều nhất để biết máy nào tốt"
+        },
+        {
+          "tip": "Đánh giá máy sau khi dùng",
+          "description": "Đánh giá giúp cộng đồng biết chất lượng máy và cải thiện dịch vụ"
+        },
+        {
+          "tip": "Sử dụng đa ngôn ngữ",
+          "description": "Chuyển ngôn ngữ ở góc trên bên phải nếu cần"
+        }
+      ]
+    }
+  },
+  
+  "faq": {
+    "general": [
+      {
+        "question": {
+          "vi": "Tôi có thể đặt bao nhiêu máy cùng lúc?",
+          "en": "How many computers can I book at the same time?",
+          "ja": "同時に何台のコンピューターを予約できますか？"
+        },
+        "answer": {
+          "vi": "Số lượng máy bạn có thể đặt cùng lúc phụ thuộc vào nhóm của bạn. Mặc định là 1 máy, admin có thể điều chỉnh giới hạn này.",
+          "en": "The number of computers you can book simultaneously depends on your group. The default is 1 computer, and the admin can adjust this limit.",
+          "ja": "同時に予約できるコンピューター数はあなたのグループによって異なります。デフォルトは1台で、管理者がこの制限を調整できます。"
+        }
+      },
+      {
+        "question": {
+          "vi": "Làm sao biết máy nào đang rảnh?",
+          "en": "How do I know which computers are available?",
+          "ja": "どのコンピューターが利用可能かどうやってわかりますか？"
+        },
+        "answer": {
+          "vi": "Máy rảnh sẽ hiển thị màu xanh trong danh sách, máy đã được đặt sẽ hiển thị màu đỏ. Bạn cũng có thể xem lịch chi tiết của từng máy.",
+          "en": "Available computers will be displayed in green in the list, booked computers will be displayed in red. You can also view the detailed schedule for each computer.",
+          "ja": "利用可能なコンピューターはリストで緑色で表示され、予約済みのコンピューターは赤色で表示されます。各コンピューターの詳細スケジュールも確認できます。"
+        }
+      },
+      {
+        "question": {
+          "vi": "Tôi có thể hủy lịch khi nào?",
+          "en": "When can I cancel my booking?",
+          "ja": "いつ予約をキャンセルできますか？"
+        },
+        "answer": {
+          "vi": "Bạn chỉ có thể hủy lịch trước khi thời gian bắt đầu. Lịch đã bắt đầu không thể hủy.",
+          "en": "You can only cancel your booking before the start time. Bookings that have already started cannot be cancelled.",
+          "ja": "開始時間前のみ予約をキャンセルできます。すでに開始された予約はキャンセルできません。"
+        }
+      },
+      {
+        "question": {
+          "vi": "Mật khẩu đăng nhập máy có thời hạn không?",
+          "en": "Does the computer login password have an expiration?",
+          "ja": "コンピューターのログインパスワードに有効期限はありますか？"
+        },
+        "answer": {
+          "vi": "Mật khẩu chỉ có hiệu lực trong thời gian bạn đã đặt. Sau khi hết thời gian, mật khẩu sẽ không còn tác dụng.",
+          "en": "The password is only valid during your booked time period. After the time expires, the password will no longer work.",
+          "ja": "パスワードは予約された時間内でのみ有効です。時間が過ぎると、パスワードは機能しなくなります。"
+        }
+      }
+    ],
+    "technical": [
+      {
+        "question": {
+          "vi": "Hệ thống hỗ trợ những ngôn ngữ nào?",
+          "en": "What languages does the system support?",
+          "ja": "システムはどの言語をサポートしていますか？"
+        },
+        "answer": {
+          "vi": "Hiện tại hỗ trợ 3 ngôn ngữ: Tiếng Việt, English, và 日本語. Bạn có thể chuyển đổi ngôn ngữ ở góc trên bên phải.",
+          "en": "Currently supports 3 languages: Vietnamese, English, and Japanese. You can switch languages in the top right corner.",
+          "ja": "現在3つの言語をサポートしています：ベトナム語、英語、日本語。右上の角で言語を切り替えることができます。"
+        }
+      },
+      {
+        "question": {
+          "vi": "Làm sao để thay đổi thông tin cá nhân?",
+          "en": "How do I change my personal information?",
+          "ja": "個人情報を変更するにはどうすればよいですか？"
+        },
+        "answer": {
+          "vi": "Vào menu tài khoản (góc trên bên phải) để chỉnh sửa thông tin cá nhân như họ tên, email.",
+          "en": "Go to the account menu (top right corner) to edit personal information such as name and email.",
+          "ja": "アカウントメニュー（右上）に移動して、名前やメールアドレスなどの個人情報を編集できます。"
+        }
+      }
+    ]
+  }
+}

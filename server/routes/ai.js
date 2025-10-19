@@ -2,67 +2,145 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { aiService } from '../services/aiService.js';
+import { db } from '../database/init.js';
 
 const router = express.Router();
 
-// Knowledge base từ các file markdown
+// Import user guide data
+
+const userGuidePath = path.join(process.cwd(), 'server', 'data', 'user-guide.json');
+const userGuide = JSON.parse(fs.readFileSync(userGuidePath, 'utf8'));
+
+// Function to get content by language
+const getContentByLanguage = (content, language = 'vi') => {
+  if (typeof content === 'string') return content;
+  if (typeof content === 'object' && content !== null) {
+    return content[language] || content.vi || content.en || Object.values(content)[0];
+  }
+  return content;
+};
+
+// Function to detect language from user message
+const detectLanguage = (message) => {
+  const messageLower = message.toLowerCase();
+  
+  // Japanese detection
+  if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(message) || 
+      messageLower.includes('こんにちは') || messageLower.includes('ありがとう') ||
+      messageLower.includes('すみません') || messageLower.includes('お願い')) {
+    return 'ja';
+  }
+  
+  // English detection
+  if (messageLower.includes('hello') || messageLower.includes('hi') ||
+      messageLower.includes('how') || messageLower.includes('what') ||
+      messageLower.includes('when') || messageLower.includes('where') ||
+      messageLower.includes('why') || messageLower.includes('can you') ||
+      messageLower.includes('please') || messageLower.includes('thank you')) {
+    return 'en';
+  }
+  
+  // Default to Vietnamese
+  return 'vi';
+};
+
+// Function to create system prompt based on language
+const createSystemPrompt = (language = 'vi') => {
+  const systemInfo = userGuide.systemInfo;
+  const description = getContentByLanguage(systemInfo.description, language);
+  
+  const prompts = {
+    vi: `Bạn là trợ lý AI thân thiện của **${systemInfo.name}** - ${description}.
+
+🎯 **MỤC TIÊU CHÍNH:**
+Giúp người dùng sử dụng hệ thống đặt máy tính một cách dễ dàng và hiệu quả.
+
+📋 **THÔNG TIN HỆ THỐNG:**
+- **Tên:** ${systemInfo.name}
+- **Phiên bản:** ${systemInfo.version}
+- **Mô tả:** ${description}
+- **Ngôn ngữ:** ${systemInfo.languages.join(', ')}
+
+👥 **ĐỐI TƯỢNG SỬ DỤNG:**
+- **Người dùng thường:** Sinh viên, nhân viên, khách muốn đặt máy tính
+- **Quản trị viên:** Quản lý hệ thống, người dùng, máy tính
+
+🎨 **PHONG CÁCH TRẢ LỜI:**
+- Thân thiện, dễ hiểu, không dùng thuật ngữ kỹ thuật
+- Tập trung vào hướng dẫn thực tế, không nói về API hay code
+- Sử dụng emoji và format đẹp để dễ đọc
+- Đưa ra ví dụ cụ thể khi có thể
+- Nếu không biết, đề xuất liên hệ admin
+
+❌ **KHÔNG TRẢ LỜI:**
+- Câu hỏi không liên quan đến hệ thống đặt máy
+- Hướng dẫn kỹ thuật về code, API, database
+- Thông tin về các hệ thống khác`,
+
+    en: `You are a friendly AI assistant for **${systemInfo.name}** - ${description}.
+
+🎯 **MAIN GOAL:**
+Help users use the computer booking system easily and efficiently.
+
+📋 **SYSTEM INFORMATION:**
+- **Name:** ${systemInfo.name}
+- **Version:** ${systemInfo.version}
+- **Description:** ${description}
+- **Languages:** ${systemInfo.languages.join(', ')}
+
+👥 **TARGET USERS:**
+- **Regular users:** Students, employees, guests who want to book computers
+- **Administrators:** System, user, and computer management
+
+🎨 **RESPONSE STYLE:**
+- Friendly, easy to understand, no technical jargon
+- Focus on practical guidance, don't talk about APIs or code
+- Use emojis and beautiful formatting for easy reading
+- Provide specific examples when possible
+- If you don't know, suggest contacting admin
+
+❌ **DO NOT ANSWER:**
+- Questions unrelated to the computer booking system
+- Technical guidance about code, APIs, databases
+- Information about other systems`,
+
+    ja: `あなたは**${systemInfo.name}**の親しみやすいAIアシスタントです - ${description}。
+
+🎯 **主な目標:**
+ユーザーがコンピューター予約システムを簡単かつ効率的に使用できるよう支援します。
+
+📋 **システム情報:**
+- **名前:** ${systemInfo.name}
+- **バージョン:** ${systemInfo.version}
+- **説明:** ${description}
+- **言語:** ${systemInfo.languages.join(', ')}
+
+👥 **対象ユーザー:**
+- **一般ユーザー:** コンピューターを予約したい学生、従業員、ゲスト
+- **管理者:** システム、ユーザー、コンピューターの管理
+
+🎨 **回答スタイル:**
+- 親しみやすく、理解しやすく、技術用語を使わない
+- 実用的なガイダンスに焦点を当て、APIやコードについて話さない
+- 読みやすくするために絵文字と美しいフォーマットを使用
+- 可能な限り具体的な例を提供
+- わからない場合は管理者に連絡することを提案
+
+❌ **回答しない:**
+- コンピューター予約システムに関係のない質問
+- コード、API、データベースに関する技術的ガイダンス
+- 他のシステムに関する情報`
+  };
+  
+  return prompts[language] || prompts.vi;
+};
+
+// Knowledge base từ user guide
 const knowledgeBase = {
-  system: `Bạn là trợ lý AI chuyên về Computer Booking System - một hệ thống quản lý đặt máy tính trực tuyến.
+  system: createSystemPrompt('vi'),
 
-THÔNG TIN HỆ THỐNG:
-- Phiên bản: Beta 0.2
-- Trạng thái: Development & Testing
-- Ngôn ngữ hỗ trợ: Tiếng Việt, English, 日本語
-
-TÍNH NĂNG CHÍNH:
-1. Đăng ký và đăng nhập tài khoản
-2. Đặt lịch sử dụng máy với thời gian tùy chọn
-3. Quản lý booking (xem, hủy)
-4. Đánh giá máy tính sau khi sử dụng (1-5 sao)
-5. Hỗ trợ đa ngôn ngữ
-6. Admin panel đầy đủ
-7. Client app tự động mở/khóa máy
-
-KIẾN TRÚC:
-- Backend: Node.js + Express + SQLite
-- Frontend: React + Tailwind CSS
-- Client App: Node.js desktop app
-
-QUY TẮC TRẢ LỜI:
-- Chỉ trả lời câu hỏi liên quan đến Computer Booking System
-- Nếu câu hỏi không liên quan đến phần mềm, từ chối trả lời
-- Sử dụng ngôn ngữ thân thiện, dễ hiểu
-- Cung cấp hướng dẫn cụ thể khi có thể
-- Nếu không biết, hãy thừa nhận và đề xuất liên hệ admin`,
-
-  features: {
-    user: [
-      "Đăng ký và đăng nhập tài khoản",
-      "Xem danh sách máy tính có sẵn", 
-      "Đặt lịch sử dụng máy với thời gian tùy chọn",
-      "Xem lịch sử và trạng thái booking",
-      "Hủy booking (trước khi bắt đầu)",
-      "Giới hạn số máy có thể đặt cùng lúc",
-      "Đánh giá máy tính sau khi sử dụng (1-5 sao)",
-      "Xem máy 'hot' (được đặt nhiều nhất)",
-      "Nhận mật khẩu đăng nhập qua email",
-      "Hỗ trợ đa ngôn ngữ (Tiếng Việt, English, 日本語)"
-    ],
-    admin: [
-      "Quản lý người dùng (thêm, sửa, xóa)",
-      "Quản lý máy tính (thêm, sửa, xóa, cập nhật trạng thái)",
-      "Quản lý booking (xem tất cả, xóa)",
-      "Quản lý nhóm người dùng và giới hạn booking",
-      "Dashboard thống kê tổng quan",
-      "Đặt giới hạn booking theo nhóm hoặc từng user",
-      "Báo cáo tổng hợp với biểu đồ thời gian",
-      "Xuất báo cáo ra file Excel",
-      "Quản lý cài đặt email SMTP",
-      "Quản lý cài đặt footer hệ thống",
-      "Import/Export danh sách nhóm",
-      "Quản lý đa ngôn ngữ"
-    ]
-  },
+  userGuide: userGuide.userGuide,
+  faq: userGuide.faq,
 
   installation: {
     requirements: "Node.js >= 18.0.0, npm >= 9.0.0",
@@ -106,7 +184,13 @@ function isRelevantQuestion(message, isAdmin = false) {
     'user', 'máy tính', 'computer', 'lịch', 'schedule',
     'đăng nhập', 'login', 'đăng ký', 'register', 'tài khoản', 'account',
     'cài đặt', 'installation', 'hướng dẫn', 'guide', 'troubleshoot',
-    'lỗi', 'error', 'bug', 'fix', 'sửa', 'khắc phục'
+    'lỗi', 'error', 'bug', 'fix', 'sửa', 'khắc phục',
+    'đặt', 'hủy', 'quản lý', 'đánh giá', 'mật khẩu', 'password',
+    'rảnh', 'trống', 'bận', 'sử dụng', 'dùng', 'thời gian',
+    'bao nhiêu', 'khi nào', 'làm sao', 'cách', 'thế nào',
+    'quên', 'forgot', 'reset', 'đổi', 'change', 'thay đổi',
+    'admin', 'quản trị', 'management', 'báo cáo', 'reports',
+    'thống kê', 'statistics', 'người dùng', 'users'
   ];
 
   const adminKeywords = [
@@ -119,81 +203,126 @@ function isRelevantQuestion(message, isAdmin = false) {
   
   const keywords = isAdmin ? adminKeywords : userKeywords;
   const messageLower = message.toLowerCase();
+  
+  // Luôn trả lời nếu có từ khóa liên quan
   return keywords.some(keyword => messageLower.includes(keyword));
 }
 
 // Hàm tạo prompt cho AI
-function createPrompt(userMessage) {
-  return `${knowledgeBase.system}
+function createPrompt(userMessage, isAdmin = false, language = 'vi') {
+  const guide = knowledgeBase.userGuide;
+  
+  // Detect language from user message
+  const detectedLanguage = detectLanguage(userMessage) || language;
+  
+  // Get system prompt for the detected language
+  const systemPrompt = createSystemPrompt(detectedLanguage);
+  
+  // Get localized content
+  const gettingStartedTitle = getContentByLanguage(guide.gettingStarted?.title, detectedLanguage);
+  const gettingStartedSteps = guide.gettingStarted?.steps?.map(step => {
+    const title = getContentByLanguage(step.title, detectedLanguage);
+    const description = getContentByLanguage(step.description, detectedLanguage);
+    const details = getContentByLanguage(step.details, detectedLanguage);
+    return `${step.step}. **${title}**\n   ${description}\n   💡 ${details}`;
+  }).join('\n\n') || getContentByLanguage('Không có hướng dẫn bắt đầu', detectedLanguage);
+  
+  // Get localized content for all sections
+  const bookingProcessTitle = getContentByLanguage(guide.bookingProcess?.title, detectedLanguage);
+  const bookingProcessSteps = guide.bookingProcess?.steps?.map(step => {
+    const title = getContentByLanguage(step.title, detectedLanguage);
+    const description = getContentByLanguage(step.description, detectedLanguage);
+    const details = getContentByLanguage(step.details, detectedLanguage);
+    return `${step.step}. **${title}**\n   ${description}\n   💡 ${details}`;
+  }).join('\n\n') || getContentByLanguage('Không có hướng dẫn đặt máy', detectedLanguage);
 
-THÔNG TIN CHI TIẾT:
+  const managingBookingsTitle = getContentByLanguage(guide.managingBookings?.title, detectedLanguage);
+  const managingBookingsFeatures = guide.managingBookings?.features?.map(feature => {
+    const featureName = getContentByLanguage(feature.feature, detectedLanguage);
+    const description = getContentByLanguage(feature.description, detectedLanguage);
+    const details = getContentByLanguage(feature.details, detectedLanguage);
+    return `• **${featureName}**: ${description}\n  💡 ${details}`;
+  }).join('\n\n') || getContentByLanguage('Không có tính năng quản lý', detectedLanguage);
 
-TÍNH NĂNG USER:
-${knowledgeBase.features.user.map(f => `- ${f}`).join('\n')}
+  const commonTasksTitle = getContentByLanguage(guide.commonTasks?.title, detectedLanguage);
+  const commonTasksList = guide.commonTasks?.tasks?.map(task => {
+    const taskName = getContentByLanguage(task.task, detectedLanguage);
+    const solution = getContentByLanguage(task.solution, detectedLanguage);
+    return `**${taskName}**: ${solution}`;
+  }).join('\n\n') || getContentByLanguage('Không có tác vụ thường gặp', detectedLanguage);
 
-TÍNH NĂNG ADMIN:
-${knowledgeBase.features.admin.map(f => `- ${f}`).join('\n')}
+  const tipsTitle = getContentByLanguage(guide.tipsAndTricks?.title, detectedLanguage);
+  const tipsList = guide.tipsAndTricks?.tips?.map(tip => {
+    const tipName = getContentByLanguage(tip.tip, detectedLanguage);
+    const description = getContentByLanguage(tip.description, detectedLanguage);
+    return `• **${tipName}**: ${description}`;
+  }).join('\n') || getContentByLanguage('Không có mẹo sử dụng', detectedLanguage);
 
-HƯỚNG DẪN CÀI ĐẶT:
-Yêu cầu hệ thống: ${knowledgeBase.installation.requirements}
-Các bước:
-${knowledgeBase.installation.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+  const faqTitle = getContentByLanguage('Câu hỏi thường gặp', detectedLanguage);
+  const faqList = guide.faq?.general?.map(qa => {
+    const question = getContentByLanguage(qa.question, detectedLanguage);
+    const answer = getContentByLanguage(qa.answer, detectedLanguage);
+    return `**Q:** ${question}\n**A:** ${answer}`;
+  }).join('\n\n') || getContentByLanguage('Không có câu hỏi thường gặp', detectedLanguage);
 
-Tài khoản mặc định: ${knowledgeBase.installation.defaultAccount.admin}
+  const adminFeaturesTitle = getContentByLanguage(guide.adminFeatures?.title, detectedLanguage);
+  const adminFeaturesList = guide.adminFeatures?.features?.map(feature => {
+    const featureName = getContentByLanguage(feature.feature, detectedLanguage);
+    const description = getContentByLanguage(feature.description, detectedLanguage);
+    const details = getContentByLanguage(feature.details, detectedLanguage);
+    return `• **${featureName}**: ${description}\n  💡 ${details}`;
+  }).join('\n\n') || getContentByLanguage('Không có tính năng admin', detectedLanguage);
 
-API ENDPOINTS:
-${Object.entries(knowledgeBase.api).map(([category, endpoints]) => 
-  `${category.toUpperCase()}:\n${endpoints.map(e => `- ${e}`).join('\n')}`
-).join('\n\n')}
+  const userQuestionLabel = getContentByLanguage('CÂU HỎI CỦA NGƯỜI DÙNG', detectedLanguage);
+  const responseInstruction = getContentByLanguage('Hãy trả lời dựa trên thông tin trên, tập trung vào hướng dẫn thực tế và dễ hiểu. Không sử dụng thuật ngữ kỹ thuật.', detectedLanguage);
 
-CÂU HỎI CỦA NGƯỜI DÙNG: ${userMessage}
+  return `${systemPrompt}
 
-Hãy trả lời câu hỏi một cách chi tiết và hữu ích. Nếu câu hỏi không liên quan đến Computer Booking System, hãy từ chối trả lời và đề xuất người dùng hỏi về hệ thống.`;
+📚 **${getContentByLanguage('HƯỚNG DẪN SỬ DỤNG CHI TIẾT', detectedLanguage)}:**
+
+## 🚀 ${gettingStartedTitle}
+${gettingStartedSteps}
+
+## 📅 ${bookingProcessTitle}
+${bookingProcessSteps}
+
+## 📋 ${managingBookingsTitle}
+${managingBookingsFeatures}
+
+## 🔧 ${commonTasksTitle}
+${commonTasksList}
+
+## 💡 ${tipsTitle}
+${tipsList}
+
+## ❓ ${faqTitle}
+${faqList}
+
+${isAdmin ? `
+## 👨‍💼 ${adminFeaturesTitle}
+${adminFeaturesList}
+` : ''}
+
+**${userQuestionLabel}:** ${userMessage}
+
+${responseInstruction}`;
 }
 
 // POST /api/ai/chat
 router.post('/chat', async (req, res) => {
   try {
     const { message, context } = req.body;
-    const isAdmin = context === 'computer-booking-system-admin';
+    const isAdmin = context && context.includes('admin');
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Kiểm tra câu hỏi có liên quan không
-    if (!isRelevantQuestion(message, isAdmin)) {
-      const adminMessage = isAdmin ? 
-        `Xin chào Admin! Tôi là trợ lý AI chuyên về quản trị Computer Booking System. Tôi chỉ có thể trả lời các câu hỏi liên quan đến quản trị hệ thống.
+    // Luôn trả lời câu hỏi, AI sẽ tự động xử lý trong prompt
+    // Comment out relevance check để AI luôn trả lời
 
-Vui lòng hỏi về:
-- Quản lý users và groups
-- Cấu hình hệ thống
-- Xuất báo cáo và thống kê
-- Khắc phục sự cố admin
-- Hướng dẫn cài đặt nâng cao
-- API endpoints và deployment
-
-Bạn cần hỗ trợ gì về quản trị hệ thống?` :
-        `Xin chào! Tôi là trợ lý AI chuyên về Computer Booking System. Tôi chỉ có thể trả lời các câu hỏi liên quan đến hệ thống đặt máy tính này.
-
-Vui lòng hỏi về:
-- Cách sử dụng hệ thống
-- Tính năng của phần mềm  
-- Hướng dẫn cài đặt
-- Quản lý admin
-- API endpoints
-- Khắc phục sự cố
-
-Bạn có câu hỏi gì về Computer Booking System không?`;
-
-      return res.json({
-        response: adminMessage
-      });
-    }
-
-    // Tạo prompt
-    const prompt = createPrompt(message);
+    // Tạo prompt với language detection
+    const prompt = createPrompt(message, isAdmin);
 
     // Gọi AI Service
     const aiResponse = await aiService.generateResponse(message, prompt);
@@ -208,6 +337,111 @@ Bạn có câu hỏi gì về Computer Booking System không?`;
       error: 'Failed to process AI request',
       response: 'Xin lỗi, có lỗi xảy ra khi xử lý câu hỏi của bạn. Vui lòng thử lại sau.'
     });
+  }
+});
+
+// POST /api/ai/chat/stream - Streaming endpoint
+router.post('/chat/stream', async (req, res) => {
+  try {
+    const { message, context } = req.body;
+    const isAdmin = context && context.includes('admin');
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    // Luôn trả lời câu hỏi, AI sẽ tự động xử lý trong prompt
+    // Comment out relevance check để AI luôn trả lời
+
+    // Tạo prompt với language detection
+    const prompt = createPrompt(message, isAdmin);
+
+    // Gọi AI Service với streaming
+    console.log('Calling generateStreamResponse...');
+    await aiService.generateStreamResponse(message, prompt, (chunk) => {
+      console.log('Received chunk:', chunk);
+      res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+    });
+    console.log('generateStreamResponse completed');
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (error) {
+    console.error('AI Streaming Error:', error);
+    res.write(`data: ${JSON.stringify({ error: 'Failed to process AI request' })}\n\n`);
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+});
+
+// Get suggested questions (public endpoint)
+router.get('/suggestions', (req, res) => {
+  try {
+    const { isAdmin } = req.query;
+    const adminMode = isAdmin === 'true';
+    
+    // Get questions from database
+    const settings = db.prepare(`
+      SELECT key, value FROM settings 
+      WHERE key IN ('ai_adminQuestions', 'ai_userQuestions')
+    `).all();
+    
+    const config = {};
+    settings.forEach(setting => {
+      const key = setting.key.replace('ai_', '');
+      try {
+        config[key] = JSON.parse(setting.value);
+      } catch {
+        config[key] = [];
+      }
+    });
+    
+    // Default questions if not found in database
+    const defaultAdminQuestions = [
+      "Cách quản lý users?",
+      "Quản lý nhóm người dùng?",
+      "Cách xuất báo cáo?",
+      "Quản lý mẫu email?",
+      "Khắc phục sự cố trợ lý AI?"
+    ];    
+    const defaultUserQuestions = [
+      "Cách đặt lịch sử dụng máy tính?",
+      "Làm sao hủy lịch đặt?",
+      "Tính năng My Bookings có gì?",
+      "Tính năng máy hot như thế nào?",
+      "Tại sao tôi lại bị hạn chế số máy đặt?"
+    ];
+    
+    const questions = adminMode 
+      ? (config.adminQuestions || defaultAdminQuestions)
+      : (config.userQuestions || defaultUserQuestions);
+    
+    res.json({ questions });
+  } catch (error) {
+    console.error('Error getting suggestions:', error);
+    // Return default questions on error
+    const defaultQuestions = req.query.isAdmin === 'true' ? [
+      "Cách quản lý users?",
+      "Quản lý nhóm người dùng?",
+      "Cách xuất báo cáo?",
+      "Quản lý mẫu email?",
+      "Khắc phục sự cố trợ lý AI?"
+    ] : [
+      "Cách đặt lịch sử dụng máy tính?",
+      "Làm sao hủy lịch đặt?",
+      "Tính năng My Bookings có gì?",
+      "Tính năng máy hot như thế nào?",
+      "Tại sao tôi lại bị hạn chế số máy đặt?"
+    ];
+    res.json({ questions: defaultQuestions });
   }
 });
 

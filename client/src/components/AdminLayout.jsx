@@ -1,7 +1,7 @@
 import { Outlet, NavLink, Link } from 'react-router-dom'
 import Footer from './Footer'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages, BarChart, Settings } from 'lucide-react'
+import { LayoutDashboard, Users, Monitor, Calendar, Users2, ArrowLeft, LogOut, Languages, FileBarChart, Settings, Mail } from 'lucide-react'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useTranslation } from '../hooks/useTranslation'
 import AdminAIAssistant from './AdminAIAssistant'
@@ -16,7 +16,7 @@ export default function AdminLayout() {
   ]
 
   const reportMenu = [
-    { to: '/admin/reports', icon: BarChart, label: t('admin.reportsSummary') || t('admin.reports') },
+    { to: '/admin/reports', icon: FileBarChart, label: t('admin.reportsSummary') || t('admin.reports') },
   ]
 
   const systemSettingMenu = [
@@ -24,6 +24,8 @@ export default function AdminLayout() {
     { to: '/admin/groups', icon: Users2, label: t('admin.groups') },
     { to: '/admin/computers', icon: Monitor, label: t('admin.computers') },
     { to: '/admin/email-server', icon: Settings, label: t('admin.emailServer.title') || 'Email Server' },
+    { to: '/admin/email-templates', icon: Mail, label: t('admin.emailTemplates.title') ||'Email Templates' },
+    { to: '/admin/ai-settings', icon: Settings, label: t('admin.aiSettings.title') || 'AI Settings' },
     { to: '/admin/translations', icon: Languages, label: t('admin.translations') },
     { to: '/admin/footer', icon: Settings, label: t('admin.footer.title') || 'Footer' },
   ]
@@ -64,7 +66,7 @@ export default function AdminLayout() {
               {/* Report */}
               <div className="relative group">
                 <div className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-primary-100 group-hover:bg-primary-600 group-hover:text-white cursor-default">
-                  <BarChart className="h-4 w-4 mr-1.5" />
+                  <FileBarChart className="h-4 w-4 mr-1.5" />
                   <span className="hidden lg:inline">{t('admin.menu.report') || 'Report'}</span>
                 </div>
                 <div className="absolute top-full left-0 hidden group-hover:block bg-white rounded-lg shadow-lg py-1 min-w-[200px] z-50">

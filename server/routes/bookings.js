@@ -248,26 +248,28 @@ router.post('/', authenticateToken, (req, res) => {
       VALUES (?, ?, 'locked')
     `).run(result.lastInsertRowid, unlockCode);
 
-  // Attempt to send email with unlock code if SMTP is configured and user has email
+  // Attempt to send email with unlock code using email service
   try {
     const user = db.prepare('SELECT email, username, fullname FROM users WHERE id = ?').get(user_id);
-    const settingsRow = db.prepare(`SELECT value FROM settings WHERE key = 'smtpConfig'`).get();
-    if (user?.email && settingsRow?.value) {
-      const cfg = JSON.parse(settingsRow.value);
-      const transporter = nodemailer.createTransport({
-        host: cfg.host,
-        port: cfg.port,
-        secure: cfg.secure,
-        auth: { user: cfg.authUser, pass: cfg.authPass }
+    if (user?.email) {
+      const computer = db.prepare('SELECT name FROM computers WHERE id = ?').get(computer_id);
+      
+      // Import and use EmailService asynchronously
+      import('../services/emailService.js').then(({ default: EmailService }) => {
+        const emailService = new EmailService();
+        
+        const bookingData = {
+          computer_name: computer?.name || 'Unknown Computer',
+          start_time,
+          end_time,
+          unlock_code
+        };
+        
+        // Fire and forget; don't block response if sending fails
+        emailService.sendBookingConfirmation(user.email, user, bookingData).catch(() => {});
+      }).catch(() => {
+        // ignore import errors
       });
-      const mailOptions = {
-        from: cfg.fromEmail,
-        to: user.email,
-        subject: 'Your booking unlock code',
-        text: `Hello ${user.fullname || user.username},\n\nYour unlock code for the booking is: ${unlockCode}.\nStart: ${start_time}\nEnd: ${end_time}\n\nThank you.`,
-      };
-      // Fire and forget; don't block response if sending fails
-      transporter.sendMail(mailOptions).catch(() => {});
     }
   } catch (e) {
     // ignore email errors

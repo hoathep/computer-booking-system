@@ -1,7 +1,7 @@
 // AI Assistant Configuration
 export const aiConfig = {
   // AI Provider Configuration
-  provider: process.env.AI_PROVIDER || 'openai', // openai, localai
+  provider: process.env.AI_PROVIDER || 'localai', // openai, localai
   
   // OpenAI Configuration
   openai: {
@@ -14,9 +14,9 @@ export const aiConfig = {
 
   // Local AI Configuration (vLLM, Ollama, etc.)
   localAI: {
-    baseURL: process.env.LOCAL_AI_URL || 'http://localhost:8000/v1',
+    baseURL: process.env.LOCAL_AI_URL || 'http://10.73.135.29:8000/v1',
     apiKey: process.env.LOCAL_AI_API_KEY || null,
-    model: process.env.LOCAL_AI_MODEL || 'llama2',
+    model: process.env.LOCAL_AI_MODEL || '/home/aidata/h100/gpt-oss-120b/',
     maxTokens: parseInt(process.env.LOCAL_AI_MAX_TOKENS) || 1000,
     temperature: parseFloat(process.env.LOCAL_AI_TEMPERATURE) || 0.7
   },

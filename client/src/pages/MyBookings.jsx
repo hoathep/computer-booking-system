@@ -204,7 +204,7 @@ export default function MyBookings() {
                         {/* Password */}
                         {booking.unlock_code && (
                           <div className="flex items-center space-x-1">
-                            <span className="text-xs text-gray-500">Pass:</span>
+                            <span className="text-xs text-gray-500">{t('bookings.password')}:</span>
                             <code className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded border">
                               {booking.unlock_code}
                             </code>

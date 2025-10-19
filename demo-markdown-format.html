@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Markdown Format Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react-markdown@9/index.umd.js"></script>
+    <script src="https://unpkg.com/remark-gfm@4/index.umd.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    typography: {
+                        DEFAULT: {
+                            css: {
+                                maxWidth: 'none',
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">🤖 AI Assistant Format Demo</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Before (Raw Text):</h2>
+            <div class="bg-gray-50 p-4 rounded border">
+                <pre class="whitespace-pre-wrap text-sm">Chào bạn! 😊  
+Tôi là trợ lý ảo chuyên hỗ trợ về **Computer Booking System** – hệ thống quản lý đặt máy tính trực tuyến. Dưới đây là những gì tôi có thể giúp bạn:
+
+---
+
+## 1️⃣ Giới thiệu nhanh về hệ thống
+- **Mục tiêu:** Cho phép người dùng (student, nhân viên, khách…) đặt thời gian sử dụng máy tính trong phòng lab, thư viện, trung tâm đào tạo … một cách dễ dàng và tự động.
+- **Công nghệ:**  
+  - Backend: Node.js + Express + SQLite  
+  - Frontend: React + Tailwind CSS  
+  - Client app (để mở/khóa máy): Node.js desktop app
+- **Đa ngôn ngữ:** Tiếng Việt, English, 日本語
+
+---
+
+## 2️⃣ Các tính năng chính (dành cho **User**)
+
+| Tính năng | Mô tả ngắn |
+|-----------|------------|
+| **Đăng ký / Đăng nhập** | Tạo tài khoản mới hoặc đăng nhập bằng email & mật khẩu. |
+| **Xem danh sách máy có sẵn** | Hiển thị trạng thái (đang rảnh, đang sử dụng, bảo trì). |
+| **Đặt lịch** | Chọn máy, ngày và khung giờ (phút hoặc giờ). Hệ thống sẽ kiểm tra trùng lịch tự động. |</pre>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">After (Markdown Rendered):</h2>
+            <div class="prose prose-sm max-w-none">
+                <div id="markdown-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const markdownContent = `Chào bạn! 😊  
+Tôi là trợ lý ảo chuyên hỗ trợ về **Computer Booking System** – hệ thống quản lý đặt máy tính trực tuyến. Dưới đây là những gì tôi có thể giúp bạn:
+
+---
+
+## 1️⃣ Giới thiệu nhanh về hệ thống
+- **Mục tiêu:** Cho phép người dùng (student, nhân viên, khách…) đặt thời gian sử dụng máy tính trong phòng lab, thư viện, trung tâm đào tạo … một cách dễ dàng và tự động.
+- **Công nghệ:**  
+  - Backend: Node.js + Express + SQLite  
+  - Frontend: React + Tailwind CSS  
+  - Client app (để mở/khóa máy): Node.js desktop app
+- **Đa ngôn ngữ:** Tiếng Việt, English, 日本語
+
+---
+
+## 2️⃣ Các tính năng chính (dành cho **User**)
+
+| Tính năng | Mô tả ngắn |
+|-----------|------------|
+| **Đăng ký / Đăng nhập** | Tạo tài khoản mới hoặc đăng nhập bằng email & mật khẩu. |
+| **Xem danh sách máy có sẵn** | Hiển thị trạng thái (đang rảnh, đang sử dụng, bảo trì). |
+| **Đặt lịch** | Chọn máy, ngày và khung giờ (phút hoặc giờ). Hệ thống sẽ kiểm tra trùng lịch tự động. |
+
+### 🔧 API Endpoints
+
+\`\`\`bash
+# Authentication
+POST /api/auth/login
+POST /api/auth/register
+GET /api/auth/me
+
+# Computers
+GET /api/computers
+GET /api/computers/:id
+
+# Bookings
+GET /api/bookings/my-bookings
+POST /api/bookings
+DELETE /api/bookings/:id
+\`\`\`
+
+> **Lưu ý:** Tất cả API endpoints đều yêu cầu authentication token.`;
+
+        // Render markdown using React
+        const { createElement } = React;
+        const { createRoot } = ReactDOM;
+        const ReactMarkdown = window.ReactMarkdown.default;
+        const remarkGfm = window.remarkGfm.default;
+
+        const App = () => {
+            return React.createElement(ReactMarkdown, {
+                remarkPlugins: [remarkGfm],
+                components: {
+                    h1: ({children}) => React.createElement('h1', {
+                        className: 'text-2xl font-bold text-gray-900 mb-4'
+                    }, children),
+                    h2: ({children}) => React.createElement('h2', {
+                        className: 'text-xl font-semibold text-gray-800 mb-3'
+                    }, children),
+                    h3: ({children}) => React.createElement('h3', {
+                        className: 'text-lg font-medium text-gray-700 mb-2'
+                    }, children),
+                    p: ({children}) => React.createElement('p', {
+                        className: 'mb-3 text-gray-700 leading-relaxed'
+                    }, children),
+                    ul: ({children}) => React.createElement('ul', {
+                        className: 'list-disc list-inside mb-3 space-y-1'
+                    }, children),
+                    ol: ({children}) => React.createElement('ol', {
+                        className: 'list-decimal list-inside mb-3 space-y-1'
+                    }, children),
+                    li: ({children}) => React.createElement('li', {
+                        className: 'text-gray-700'
+                    }, children),
+                    table: ({children}) => React.createElement('div', {
+                        className: 'overflow-x-auto mb-4'
+                    }, React.createElement('table', {
+                        className: 'min-w-full border border-gray-300 rounded-lg'
+                    }, children)),
+                    thead: ({children}) => React.createElement('thead', {
+                        className: 'bg-gray-50'
+                    }, children),
+                    tbody: ({children}) => React.createElement('tbody', {
+                        className: 'bg-white'
+                    }, children),
+                    tr: ({children}) => React.createElement('tr', {
+                        className: 'border-b border-gray-200'
+                    }, children),
+                    th: ({children}) => React.createElement('th', {
+                        className: 'px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                    }, children),
+                    td: ({children}) => React.createElement('td', {
+                        className: 'px-4 py-2 text-sm text-gray-900'
+                    }, children),
+                    code: ({children}) => React.createElement('code', {
+                        className: 'bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-red-600'
+                    }, children),
+                    pre: ({children}) => React.createElement('pre', {
+                        className: 'bg-gray-900 text-gray-100 p-4 rounded-lg text-sm overflow-x-auto'
+                    }, children),
+                    blockquote: ({children}) => React.createElement('blockquote', {
+                        className: 'border-l-4 border-blue-500 pl-4 italic text-gray-600 bg-blue-50 py-2 rounded-r'
+                    }, children),
+                    strong: ({children}) => React.createElement('strong', {
+                        className: 'font-semibold text-gray-900'
+                    }, children),
+                    em: ({children}) => React.createElement('em', {
+                        className: 'italic text-gray-600'
+                    }, children),
+                    hr: () => React.createElement('hr', {
+                        className: 'my-6 border-gray-300'
+                    }),
+                    a: ({href, children}) => React.createElement('a', {
+                        href: href,
+                        className: 'text-blue-600 hover:underline',
+                        target: '_blank',
+                        rel: 'noopener noreferrer'
+                    }, children)
+                }
+            }, markdownContent);
+        };
+
+        const root = createRoot(document.getElementById('markdown-content'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>

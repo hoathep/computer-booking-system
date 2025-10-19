@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database(path.join(__dirname, 'booking.db'));
+export const db = new Database(path.join(__dirname, 'booking.db'));
 
 export function initDatabase() {
   // Ensure new columns exist for existing databases (simple migrations)
@@ -127,6 +127,17 @@ export function initDatabase() {
       FOREIGN KEY (user_id) REFERENCES users(id),
       UNIQUE(booking_id)
     );
+
+    CREATE TABLE IF NOT EXISTS email_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      variables TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Insert default admin user if not exists
@@ -140,6 +151,111 @@ export function initDatabase() {
     `).run('admin', hashedPassword, 'Administrator', 'admin', 999);
     
     console.log('✅ Default admin user created (username: admin, password: admin123)');
+  }
+
+  // Insert default email templates if not exist
+  const templatesExist = db.prepare('SELECT COUNT(*) as count FROM email_templates').get();
+  
+  if (templatesExist.count === 0) {
+    const defaultTemplates = [
+      {
+        name: 'booking_confirmation',
+        subject: 'Xác nhận đặt máy - {{computer_name}}',
+        body: `Xin chào {{user_name}},
+
+Bạn đã đặt máy thành công!
+
+Thông tin đặt máy:
+- Máy tính: {{computer_name}}
+- Thời gian bắt đầu: {{start_time}}
+- Thời gian kết thúc: {{end_time}}
+- Mã mở khóa: {{unlock_code}}
+
+Vui lòng đến đúng giờ và sử dụng mã mở khóa để truy cập máy tính.
+
+Trân trọng,
+Hệ thống đặt máy`,
+        variables: JSON.stringify(['user_name', 'computer_name', 'start_time', 'end_time', 'unlock_code'])
+      },
+      {
+        name: 'booking_cancellation',
+        subject: 'Hủy đặt máy - {{computer_name}}',
+        body: `Xin chào {{user_name}},
+
+Đặt máy của bạn đã được hủy.
+
+Thông tin đặt máy đã hủy:
+- Máy tính: {{computer_name}}
+- Thời gian bắt đầu: {{start_time}}
+- Thời gian kết thúc: {{end_time}}
+
+Cảm ơn bạn đã sử dụng dịch vụ.
+
+Trân trọng,
+Hệ thống đặt máy`,
+        variables: JSON.stringify(['user_name', 'computer_name', 'start_time', 'end_time'])
+      },
+      {
+        name: 'booking_reminder',
+        subject: 'Nhắc nhở đặt máy - {{computer_name}}',
+        body: `Xin chào {{user_name}},
+
+Nhắc nhở: Bạn có đặt máy sắp bắt đầu!
+
+Thông tin đặt máy:
+- Máy tính: {{computer_name}}
+- Thời gian bắt đầu: {{start_time}}
+- Thời gian kết thúc: {{end_time}}
+- Mã mở khóa: {{unlock_code}}
+
+Vui lòng đến đúng giờ.
+
+Trân trọng,
+Hệ thống đặt máy`,
+        variables: JSON.stringify(['user_name', 'computer_name', 'start_time', 'end_time', 'unlock_code'])
+      },
+      {
+        name: 'welcome_email',
+        subject: 'Chào mừng đến với hệ thống đặt máy',
+        body: `Xin chào {{user_name}},
+
+Chào mừng bạn đến với hệ thống đặt máy!
+
+Tài khoản của bạn đã được tạo thành công:
+- Tên đăng nhập: {{username}}
+- Email: {{email}}
+
+Bạn có thể bắt đầu đặt máy ngay bây giờ.
+
+Trân trọng,
+Hệ thống đặt máy`,
+        variables: JSON.stringify(['user_name', 'username', 'email'])
+      },
+      {
+        name: 'password_reset',
+        subject: 'Đặt lại mật khẩu',
+        body: `Xin chào {{user_name}},
+
+Bạn đã yêu cầu đặt lại mật khẩu.
+
+Mật khẩu mới của bạn: {{new_password}}
+
+Vui lòng đăng nhập và thay đổi mật khẩu ngay.
+
+Trân trọng,
+Hệ thống đặt máy`,
+        variables: JSON.stringify(['user_name', 'new_password'])
+      }
+    ];
+
+    for (const template of defaultTemplates) {
+      db.prepare(`
+        INSERT INTO email_templates (name, subject, body, variables)
+        VALUES (?, ?, ?, ?)
+      `).run(template.name, template.subject, template.body, template.variables);
+    }
+    
+    console.log('✅ Default email templates created');
   }
 
   // Ensure banned column exists and backfill nulls to 0
