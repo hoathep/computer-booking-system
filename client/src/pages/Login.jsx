@@ -27,7 +27,30 @@ export default function Login() {
         navigate('/dashboard')
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Đăng nhập thất bại')
+      const errorMessage = err.response?.data?.error
+      
+      // Handle network errors
+      if (!err.response) {
+        setError(t('errors.networkError'))
+      } else if (errorMessage === 'Invalid credentials') {
+        setError(t('auth.invalidCredentials'))
+      } else if (errorMessage === 'Username and password required') {
+        setError(t('auth.usernamePasswordRequired'))
+      } else if (errorMessage === 'Account is banned') {
+        setError(t('auth.accountBanned'))
+      } else if (errorMessage === 'Failed to send reset email. Please try again later.') {
+        setError(t('auth.failedToSendResetEmail'))
+      } else if (errorMessage === 'Current password is incorrect') {
+        setError(t('auth.currentPasswordIncorrect'))
+      } else if (errorMessage === 'Email not found in the system') {
+        setError(t('auth.emailNotFound'))
+      } else if (errorMessage === 'Email is required') {
+        setError(t('auth.emailRequired'))
+      } else if (errorMessage === 'Invalid or expired password reset link') {
+        setError(t('auth.invalidExpiredResetLink'))
+      } else {
+        setError(errorMessage || t('auth.loginError'))
+      }
     } finally {
       setLoading(false)
     }
@@ -41,7 +64,7 @@ export default function Login() {
             <Monitor className="h-8 w-8 text-primary-600" />
           </div>
           <h2 className="text-3xl font-bold text-white">Computer Booking System</h2>
-          <p className="mt-2 text-primary-100">Hệ thống đặt máy tính trực tuyến</p>
+          <p className="mt-2 text-primary-100">{t('auth.systemTitle')}</p>
           <div className="mt-4">
             <LanguageSwitcher />
           </div>
@@ -85,6 +108,15 @@ export default function Login() {
               />
             </div>
 
+            <div className="text-right">
+              <Link 
+                to="/forgot-password" 
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                {t('auth.forgotPassword')}
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -101,12 +133,6 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-              {t('common.register')}
-            </Link>
-          </div>
 
         </div>
       </div>

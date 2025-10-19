@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Calendar, Monitor, Clock, Trash2, CheckCircle, XCircle, AlertCircle, Star, Network } from 'lucide-react'
 import { useTranslation } from '../hooks/useTranslation'
@@ -7,6 +8,7 @@ import { vi } from 'date-fns/locale'
 
 export default function MyBookings() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState(null)
@@ -161,7 +163,7 @@ export default function MyBookings() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('bookings.noBookings')}</h3>
           <p className="text-gray-500 mb-6">Bắt đầu đặt máy để quản lý lịch của bạn</p>
-          <button className="btn btn-primary">
+          <button className="btn btn-primary inline-flex items-center" onClick={() => navigate('/computers')}>
             <Monitor className="h-4 w-4 mr-2" />
             {t('dashboard.bookNow')}
           </button>

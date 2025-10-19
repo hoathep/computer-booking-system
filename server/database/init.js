@@ -16,6 +16,14 @@ export function initDatabase() {
     if (!hasBanned) {
       db.prepare(`ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0`).run();
     }
+    const hasResetToken = usersCols.some(c => c.name === 'reset_token');
+    if (!hasResetToken) {
+      db.prepare(`ALTER TABLE users ADD COLUMN reset_token TEXT`).run();
+    }
+    const hasResetTokenExpiry = usersCols.some(c => c.name === 'reset_token_expiry');
+    if (!hasResetTokenExpiry) {
+      db.prepare(`ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME`).run();
+    }
   } catch (e) {
     // ignore
   }
@@ -65,6 +73,8 @@ export function initDatabase() {
       group_name TEXT DEFAULT 'default',
       max_concurrent_bookings INTEGER DEFAULT 1,
       banned INTEGER DEFAULT 0,
+      reset_token TEXT,
+      reset_token_expiry DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
