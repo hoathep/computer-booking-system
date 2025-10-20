@@ -55,7 +55,7 @@ export default function Computers() {
 
   const fetchComputers = async () => {
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0]
+      const dateStr = format(selectedDate, 'yyyy-MM-dd')
       const response = await axios.get(`/api/computers?date=${dateStr}`)
       setComputers(response.data)
     } catch (error) {
@@ -72,7 +72,13 @@ export default function Computers() {
       const response = await axios.get(`/api/bookings?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`)
       setBookings(response.data)
     } catch (error) {
-      console.error('Failed to fetch bookings:', error)
+      const errMsg = error.response?.data?.error
+      if (errMsg === 'BOOKINGS_MAX_ADVANCE_DAYS') {
+        const days = error.response?.data?.maxDays ?? 0
+        setMessage({ type: 'error', text: t('computers.maxAdvanceNotice', { days }) })
+      } else {
+        console.error('Failed to fetch bookings:', error)
+      }
     }
   }
 
@@ -294,10 +300,14 @@ export default function Computers() {
       fetchBookings()
     } catch (error) {
       console.error('Booking error:', error.response?.data)
-      const errorMessage = error.response?.data?.error || t('computers.bookingError')
-      
-      // Handle specific error messages with i18n
-      if (errorMessage.includes('Start time cannot be in the past')) {
+      const errorCode = error.response?.data?.error
+      const errorMessage = errorCode || t('computers.bookingError')
+
+      // Handle specific coded errors first
+      if (errorCode === 'BOOKINGS_MAX_ADVANCE_DAYS') {
+        const days = error.response?.data?.maxDays ?? 0
+        setMessage({ type: 'error', text: t('computers.maxAdvanceNotice', { days }) })
+      } else if (errorMessage.includes('Start time cannot be in the past')) {
         setMessage({ 
           type: 'error', 
           text: t('computers.pastTime')

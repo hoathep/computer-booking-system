@@ -32,11 +32,12 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      const todayStr = new Date().toLocaleDateString('sv-SE')
       const [activeRes, allRes, hotRes, availabilityRes, timeStatsRes] = await Promise.all([
         axios.get('/api/bookings/active'),
         axios.get('/api/bookings/my-bookings'),
         axios.get('/api/computers/hot'),
-        axios.get('/api/computers/availability-stats'),
+        axios.get(`/api/computers/availability-stats?date=${todayStr}`),
         axios.get('/api/bookings/user-time-stats')
       ])
 
@@ -307,11 +308,7 @@ export default function Dashboard() {
                     if (sortBy === 'available') return computer.status === 'available'
                     if (sortBy === 'rating') return computer.rating > 0
                     return true
-                  }).length > 5 && (
-                    <div className="text-xs text-gray-500 mb-3 text-center bg-gray-50 py-2 rounded">
-                      Cuộn để xem thêm máy
-                    </div>
-                  )}
+                  }).length > 5 && null}
                   <div className="space-y-2 pr-2">
                     {hotComputers
                       .filter(computer => {

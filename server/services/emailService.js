@@ -12,10 +12,12 @@ class EmailService {
       const settingsRow = db.prepare(`SELECT value FROM settings WHERE key = 'smtpConfig'`).get();
       if (settingsRow?.value) {
         this.smtpConfig = JSON.parse(settingsRow.value);
-        this.transporter = nodemailer.createTransporter({
+        const port = Number(this.smtpConfig.port) || 587;
+        const secure = this.smtpConfig.secure === true || this.smtpConfig.secure === 'true' || port === 465;
+        this.transporter = nodemailer.createTransport({
           host: this.smtpConfig.host,
-          port: this.smtpConfig.port,
-          secure: this.smtpConfig.secure,
+          port,
+          secure,
           auth: {
             user: this.smtpConfig.authUser,
             pass: this.smtpConfig.authPass
@@ -80,7 +82,7 @@ class EmailService {
       
       // Send email
       const mailOptions = {
-        from: this.smtpConfig.fromEmail,
+        from: this.smtpConfig.fromEmail || this.smtpConfig.authUser,
         to: to,
         subject: subject,
         text: body

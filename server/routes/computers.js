@@ -26,29 +26,29 @@ router.get('/availability-stats', authenticateToken, (req, res) => {
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status IN ('booked', 'active')
-          AND DATE(b.start_time) = DATE(?)
+          AND DATE(datetime(b.start_time, 'localtime')) = DATE(?, 'localtime')
         ) as has_bookings_on_date,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
-          AND b.status IN ('booked', 'active')
-          AND b.start_time <= datetime('now') AND b.end_time >= datetime('now')
+          AND b.status = 'active'
+          AND datetime(b.start_time) <= datetime('now', 'localtime') AND datetime(b.end_time) >= datetime('now', 'localtime')
         ) as is_currently_in_use,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status = 'booked'
-          AND b.start_time > datetime('now')
-          AND DATE(b.start_time) = DATE(?)
+          AND datetime(b.start_time) > datetime('now', 'localtime')
+          AND DATE(datetime(b.start_time, 'localtime')) = DATE(?, 'localtime')
         ) as is_booked_future_on_date,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status IN ('booked', 'active')
-          AND b.start_time <= ? AND b.end_time >= ?
+          AND datetime(b.start_time) <= datetime(?, 'localtime') AND datetime(b.end_time) >= datetime(?, 'localtime')
         ) as has_active_bookings_in_timeframe
       FROM computers c
       WHERE c.status NOT IN ('maintenance', 'disabled')
@@ -109,15 +109,15 @@ router.get('/hot', authenticateToken, (req, res) => {
                FROM bookings b2 
                WHERE b2.computer_id = c.id 
                AND b2.status = 'active'
-               AND datetime('now') >= datetime(b2.start_time) 
-               AND datetime('now') <= datetime(b2.end_time)
+               AND datetime('now','localtime') >= datetime(b2.start_time,'localtime') 
+               AND datetime('now','localtime') <= datetime(b2.end_time,'localtime')
              ) as is_currently_in_use,
              (
                SELECT COUNT(*) 
                FROM bookings b3 
                WHERE b3.computer_id = c.id 
                AND b3.status = 'booked'
-               AND datetime('now') < datetime(b3.start_time)
+               AND datetime('now','localtime') < datetime(b3.start_time,'localtime')
              ) as is_booked_future
       FROM computers c
       LEFT JOIN bookings b ON c.id = b.computer_id
@@ -160,29 +160,29 @@ router.get('/', authenticateToken, (req, res) => {
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status IN ('booked', 'active')
-          AND DATE(b.start_time) = DATE(?)
+          AND DATE(datetime(b.start_time,'localtime')) = DATE(?, 'localtime')
         ) as has_bookings_on_date,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
-          AND b.status IN ('booked', 'active')
-          AND b.start_time <= datetime('now') AND b.end_time >= datetime('now')
+          AND b.status = 'active'
+          AND datetime(b.start_time,'localtime') <= datetime('now','localtime') AND datetime(b.end_time,'localtime') >= datetime('now','localtime')
         ) as is_currently_in_use,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status = 'booked'
-          AND b.start_time > datetime('now')
-          AND DATE(b.start_time) = DATE(?)
+          AND datetime(b.start_time,'localtime') > datetime('now','localtime')
+          AND DATE(datetime(b.start_time,'localtime')) = DATE(?, 'localtime')
         ) as is_booked_future_on_date,
         (
           SELECT COUNT(*) 
           FROM bookings b 
           WHERE b.computer_id = c.id 
           AND b.status IN ('booked', 'active')
-          AND b.start_time <= ? AND b.end_time >= ?
+          AND datetime(b.start_time,'localtime') <= datetime(?, 'localtime') AND datetime(b.end_time,'localtime') >= datetime(?, 'localtime')
         ) as has_active_bookings_in_timeframe
       FROM computers c
       ORDER BY c.name

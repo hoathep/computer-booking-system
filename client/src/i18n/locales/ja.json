@@ -185,7 +185,8 @@
     "ipAddress": "IP",
     "description": "説明",
     "notAvailable": "N/A",
-    "cannotBookSlot": "予約不可"
+    "cannotBookSlot": "予約不可",
+    "maxAdvanceNotice": "予約は最大{{days}}日前まで可能です"
   },
   "bookings": {
     "title": "私の予約",
@@ -247,7 +248,7 @@
       "supportEmail": "サポート用メール",
       "phone": "電話番号",
       "teamsLink": "Microsoft Teams リンク",
-      "teamsChat": "Teamsでチャット",
+      "teamsChat": "Teamsで私とチャット",
       "saved": "フッター設定を保存しました"
     },
     "aiSettings": {

@@ -184,7 +184,8 @@
     "ipAddress": "IP",
     "description": "Mô tả",
     "notAvailable": "N/A",
-    "cannotBookSlot": "Không thể đặt"
+    "cannotBookSlot": "Không thể đặt",
+    "maxAdvanceNotice": "Chỉ cho phép đặt trước tối đa {{days}} ngày"
   },
   "bookings": {
     "title": "Lịch đặt máy của tôi",
@@ -247,7 +248,7 @@
       "supportEmail": "Email hỗ trợ kỹ thuật",
       "phone": "Số điện thoại",
       "teamsLink": "Link Microsoft Teams",
-      "teamsChat": "Chat với chúng tôi trên Teams",
+      "teamsChat": "Chat với tôi trên Teams",
       "saved": "Đã lưu footer"
     },
     "aiSettings": {

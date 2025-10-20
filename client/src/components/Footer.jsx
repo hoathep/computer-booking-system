@@ -42,7 +42,10 @@ export default function Footer() {
           {/* Right column - Teams link */}
           <div className="text-center md:text-right">
             {cfg.teamsLink && (
-              <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="text-primary-700 hover:text-primary-900">{t('admin.footer.teamsChat')}</a>
+              <a href={cfg.teamsLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-700 hover:text-primary-900">
+                <span aria-hidden>💬✨</span>
+                <span>{t('admin.footer.teamsChat')}</span>
+              </a>
             )}
           </div>
         </div>

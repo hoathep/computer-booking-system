@@ -185,7 +185,8 @@
     "ipAddress": "IP",
     "description": "Description",
     "notAvailable": "N/A",
-    "cannotBookSlot": "Cannot book"
+    "cannotBookSlot": "Cannot book",
+    "maxAdvanceNotice": "Bookings allowed up to {{days}} days in advance"
   },
   "bookings": {
     "title": "My Bookings",
@@ -248,7 +249,7 @@
       "supportEmail": "Support email",
       "phone": "Phone",
       "teamsLink": "Microsoft Teams link",
-      "teamsChat": "Chat with us on Teams",
+      "teamsChat": "Chat with me on Teams",
       "saved": "Footer settings saved"
     },
     "aiSettings": {

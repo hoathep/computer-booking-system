@@ -52,7 +52,7 @@ router.get('/user-time-stats', authenticateToken, (req, res) => {
       ), 0) as hours
       FROM bookings 
       WHERE user_id = ? 
-      AND date(start_time) = date('now')
+      AND date(start_time, 'localtime') = date('now', 'localtime')
       AND status IN ('booked', 'active', 'completed')
     `).get(userId);
     
@@ -68,7 +68,7 @@ router.get('/user-time-stats', authenticateToken, (req, res) => {
       FROM bookings b
       LEFT JOIN sessions s ON s.booking_id = b.id
       WHERE b.user_id = ? 
-      AND strftime('%Y-%m', b.start_time) = strftime('%Y-%m', 'now')
+      AND strftime('%Y-%m', b.start_time, 'localtime') = strftime('%Y-%m', 'now', 'localtime')
       AND b.status = 'completed'
     `).get(userId);
 
@@ -162,7 +162,10 @@ router.post('/', authenticateToken, (req, res) => {
       const maxAllowed = new Date();
       maxAllowed.setDate(maxAllowed.getDate() + maxDays);
       if (startDateTime > maxAllowed || endDateTime > maxAllowed) {
-        return res.status(400).json({ error: `Bookings allowed up to ${maxDays} days in advance` });
+        return res.status(400).json({ 
+          error: 'BOOKINGS_MAX_ADVANCE_DAYS',
+          maxDays
+        });
       }
     } catch (e) {
       // ignore settings read error -> fallback already enforced
@@ -262,13 +265,17 @@ router.post('/', authenticateToken, (req, res) => {
           computer_name: computer?.name || 'Unknown Computer',
           start_time,
           end_time,
-          unlock_code
+          unlock_code: unlockCode
         };
         
-        // Fire and forget; don't block response if sending fails
-        emailService.sendBookingConfirmation(user.email, user, bookingData).catch(() => {});
-      }).catch(() => {
-        // ignore import errors
+        // Fire and forget; don't block response if sending fails; log errors for diagnosis
+        emailService
+          .sendBookingConfirmation(user.email, user, bookingData)
+          .catch((err) => {
+            console.error('Booking confirmation email failed:', err?.message || err);
+          });
+      }).catch((err) => {
+        console.error('EmailService import failed:', err?.message || err);
       });
     }
   } catch (e) {
