@@ -121,7 +121,7 @@ router.post('/change-password', authenticateToken, (req, res) => {
   }
 });
 
-// Forgot password - send reset link
+// Forgot password - generate temporary password and email to user
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -136,21 +136,26 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(404).json({ error: 'Email not found in the system' });
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+    // Generate temporary password (8-12 characters)
+    const passwordChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const tempLength = 8 + crypto.randomInt(5); // 8..12
+    let tempPassword = '';
+    for (let i = 0; i < tempLength; i++) {
+      tempPassword += passwordChars[crypto.randomInt(passwordChars.length)];
+    }
 
-    // Store reset token in database
+    // Hash and update password immediately; clear any previous reset tokens
+    const hashedTempPassword = bcrypt.hashSync(tempPassword, 10);
     db.prepare(`
       UPDATE users 
-      SET reset_token = ?, reset_token_expiry = ? 
+      SET password = ?, reset_token = NULL, reset_token_expiry = NULL
       WHERE email = ?
-    `).run(resetToken, resetTokenExpiry.toISOString(), email);
+    `).run(hashedTempPassword, email);
 
-    // Send reset email
+    // Send email with temporary password
     try {
-      await emailService.sendPasswordReset(email, user, resetToken);
-      res.json({ message: 'Password reset link has been sent to your email' });
+      await emailService.sendPasswordReset(email, user, tempPassword);
+      res.json({ message: 'A temporary password has been sent to your email' });
     } catch (emailError) {
       console.error('Failed to send reset email:', emailError);
       res.status(500).json({ error: 'Failed to send reset email. Please try again later.' });

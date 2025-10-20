@@ -146,6 +146,7 @@ class EmailService {
   async sendPasswordReset(userEmail, userData, newPassword) {
     const variables = {
       user_name: userData.fullname || userData.username,
+      username: userData.username,
       new_password: newPassword
     };
     
